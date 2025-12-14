@@ -72,6 +72,12 @@
       #next steps can see it
       #retrieve using "${SOME_VAR}"
       #jobs run at different machines, so $GITHUB_ENV isn't shared across jobs
+  #syntax errors
+    #steps:
+      #error:
+        #-name: blabla
+      #correct:
+        #- name: blabla
 name: test, collectstatic, build, deploy
 
 on:
@@ -244,35 +250,35 @@ jobs:
     environment: dev
     runs-on: ubuntu-latest
     env:
-          SECRET_KEY: abc123
-          ALLOWED_HOSTS: "*"
-          DB_HOST: postgres
-          DB_NAME: voicewake
-          DB_USER: postgres
-          DB_PASSWORD: localhost
-          DB_PORT: 5432
-          REDIS_ENDPOINT: redis://redis
-          #tests don't use actual email, so leave AWS_SES empty
-          AWS_SES_HOST:
-          AWS_SES_SMTP_USER_NAME:
-          AWS_SES_SMTP_PASSWORD:
-          AWS_SES_FROM_EMAIL:
-          AWS_SES_IAM_USER_NAME:
-          #at github secrets
-          #env vars defined in github environments (project>settings>environments) introduces unwanted whitespace and newlines
-          #at python, to remove all whitespace and newlines, do: ''.join(os.environ['YOUR_VAR'].split())
-          AWS_S3_ACCESS_KEY_ID: ${{ secrets.AWS_S3_ACCESS_KEY_ID }}
-          AWS_S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_ACCESS_KEY }}
-          AWS_S3_REGION_NAME: ${{ secrets.AWS_S3_REGION_NAME }}
-          AWS_S3_CUSTOM_DOMAIN: ${{ secrets.AWS_S3_CUSTOM_DOMAIN }}
-          AWS_S3_STATIC_BUCKET_NAME: ${{ secrets.AWS_S3_STATIC_BUCKET_NAME }}
-          AWS_S3_MEDIA_BUCKET_NAME: ${{ secrets.AWS_S3_MEDIA_BUCKET_NAME }}
-          AWS_S3_UGC_UNPROCESSED_BUCKET_NAME: ${{ secrets.AWS_S3_UGC_UNPROCESSED_BUCKET_NAME }}
-          AWS_LAMBDA_ACCESS_KEY_ID:
-          AWS_LAMBDA_SECRET_ACCESS_KEY:
-          AWS_LAMBDA_REGION_NAME:
-          AWS_LAMBDA_NORMALISE_FUNCTION_NAME:
-          HTTP_CACHE_CONTROL_MAX_AGE: ${{ vars.HTTP_CACHE_CONTROL_MAX_AGE }}
+      SECRET_KEY: abc123
+      ALLOWED_HOSTS: "*"
+      DB_HOST: postgres
+      DB_NAME: voicewake
+      DB_USER: postgres
+      DB_PASSWORD: localhost
+      DB_PORT: 5432
+      REDIS_ENDPOINT: redis://redis
+      #tests don't use actual email, so leave AWS_SES empty
+      AWS_SES_HOST:
+      AWS_SES_SMTP_USER_NAME:
+      AWS_SES_SMTP_PASSWORD:
+      AWS_SES_FROM_EMAIL:
+      AWS_SES_IAM_USER_NAME:
+      #at github secrets
+      #env vars defined in github environments (project>settings>environments) introduces unwanted whitespace and newlines
+      #at python, to remove all whitespace and newlines, do: ''.join(os.environ['YOUR_VAR'].split())
+      AWS_S3_ACCESS_KEY_ID: ${{ secrets.AWS_S3_ACCESS_KEY_ID }}
+      AWS_S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_ACCESS_KEY }}
+      AWS_S3_REGION_NAME: ${{ secrets.AWS_S3_REGION_NAME }}
+      AWS_S3_CUSTOM_DOMAIN: ${{ secrets.AWS_S3_CUSTOM_DOMAIN }}
+      AWS_S3_STATIC_BUCKET_NAME: ${{ secrets.AWS_S3_STATIC_BUCKET_NAME }}
+      AWS_S3_MEDIA_BUCKET_NAME: ${{ secrets.AWS_S3_MEDIA_BUCKET_NAME }}
+      AWS_S3_UGC_UNPROCESSED_BUCKET_NAME: ${{ secrets.AWS_S3_UGC_UNPROCESSED_BUCKET_NAME }}
+      AWS_LAMBDA_ACCESS_KEY_ID:
+      AWS_LAMBDA_SECRET_ACCESS_KEY:
+      AWS_LAMBDA_REGION_NAME:
+      AWS_LAMBDA_NORMALISE_FUNCTION_NAME:
+      HTTP_CACHE_CONTROL_MAX_AGE: ${{ vars.HTTP_CACHE_CONTROL_MAX_AGE }}
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v5
@@ -301,7 +307,7 @@ jobs:
         run: |
           cd ./frontend
           npm install -g vite
-      -name: Build frontend with Vite
+      - name: Build frontend with Vite
         run: |
           cd ./frontend
           vite build --emptyOutDir -- --env="${STAGE_OR_PROD}"
