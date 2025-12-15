@@ -39,14 +39,12 @@ jobs:
   curiosity_on_pr_close:
     #on close PR, this should not run
     if: >
-      ${{
-          github.event_name == 'pull_request' &&
-          (
-            github.event.action == 'opened' ||
-            github.event.action == 'reopened' ||
-            (github.event.action == 'closed' && github.event.pull_request.merged == true)
-          )
-      }}
+      github.event_name == 'pull_request' &&
+      (
+        github.event.action == 'opened' ||
+        github.event.action == 'reopened' ||
+        (github.event.action == 'closed' && github.event.pull_request.merged == true)
+      )
     environment: dev
     runs-on: ubuntu-latest
     steps:
