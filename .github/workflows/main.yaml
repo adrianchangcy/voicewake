@@ -37,13 +37,20 @@ on:
 
 jobs:
   curiosity_on_pr_close:
-    #specify environment to choose from git > settings > environments
-    #https://stackoverflow.com/questions/66521958/how-to-access-environment-secrets-from-a-github-workflow
+    #on close PR, this should not run
+    if: >
+      ${{
+          github.event_name == 'pull_request' &&
+          (
+            github.event.action == 'opened' ||
+            github.event.action == 'reopened' ||
+            (github.event.action == 'closed' && github.event.pull_request.merged == true)
+          )
+      }}
     environment: dev
     runs-on: ubuntu-latest
     steps:
       - name: hmm
         run: |
-          echo "${{ github.event.action == 'closed' }}"
-          echo "${{ github.event.pull_request.merged == false }}"
+          echo "IS THIS RUNNING ON PR CLOSED??????? IF BLOCK ERROR???"
 
