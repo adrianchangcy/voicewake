@@ -38,17 +38,13 @@ on:
 jobs:
   curiosity_on_pr_close:
     #on close PR, this should not run
+    #on next closed, do at if statement: == 'true'
     if: >
-      github.event_name == 'pull_request' &&
-      (
-        github.event.action == 'opened' ||
-        github.event.action == 'reopened' ||
-        (github.event.action == 'closed' && github.event.pull_request.merged == true)
-      )
+        github.event.action == 'closed' && github.event.pull_request.merged == 'true'
     environment: dev
     runs-on: ubuntu-latest
     steps:
       - name: hmm
         run: |
-          echo "IS THIS RUNNING ON PR CLOSED??????? IF BLOCK ERROR???"
+          echo "IS THIS RUNNING ON PR CLOSED??????? HELL YEA"
 

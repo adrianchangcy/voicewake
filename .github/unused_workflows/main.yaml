@@ -41,14 +41,12 @@ jobs:
   run_tests:
     #using ">" instead of "|" so whitespace and newlines below are not preserved, i.e. only pretty in .yaml
     if: >
-      ${{
-          github.event_name == 'pull_request' &&
-          (
-            github.event.action == 'opened' ||
-            github.event.action == 'reopened' ||
-            (github.event.action == 'closed' && github.event.pull_request.merged == true)
-          )
-      }}
+      github.event_name == 'pull_request' &&
+      (
+        github.event.action == 'opened' ||
+        github.event.action == 'reopened' ||
+        (github.event.action == 'closed' && github.event.pull_request.merged == true)
+      )
     #specify environment to choose from git > settings > environments
     #https://stackoverflow.com/questions/66521958/how-to-access-environment-secrets-from-a-github-workflow
     environment: dev
@@ -132,10 +130,8 @@ jobs:
   docker_build_tag_push_to_ecr:
     needs: run_tests
     if: >
-      ${{
-          github.event_name == 'pull_request' &&
-          (github.event.action == 'opened' || github.event.action == 'reopened')
-      }}
+      github.event_name == 'pull_request' &&
+      (github.event.action == 'opened' || github.event.action == 'reopened')
     environment: dev
     runs-on: ubuntu-latest
     permissions:
@@ -192,10 +188,8 @@ jobs:
   vite_build_django_collectstatic_to_s3_stage:
     needs: docker_build_tag_push_to_ecr
     if: >
-      ${{
-          github.event_name == 'pull_request' &&
-          (github.event.action == 'opened' || github.event.action == 'reopened')
-      }}
+      github.event_name == 'pull_request' &&
+      (github.event.action == 'opened' || github.event.action == 'reopened')
     environment: dev
     runs-on: ubuntu-latest
     env:
@@ -261,10 +255,8 @@ jobs:
   vite_build_django_collectstatic_to_s3_prod:
     needs: run_tests
     if: >
-      ${{
-          github.event_name == 'pull_request' &&
-          (github.event.action == 'closed' && github.event.pull_request.merged == true)
-      }}
+      github.event_name == 'pull_request' &&
+      (github.event.action == 'closed' && github.event.pull_request.merged == true)
     environment: dev
     runs-on: ubuntu-latest
     env:
