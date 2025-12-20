@@ -1,5 +1,15 @@
 #for things that went wrong, refer to: project > Actions > all workflows
 
+#current stage/prod setup
+  #everything in EC2 small, using EBS so db data persists when instance is down
+  #pull from ECR
+  #do scheduled pg_dump/pg_dumpall into S3
+
+#ideal stage/prod setup (waste of money for hobby project with 0 users)
+  #AWS RDS for Postgresql
+  #AWS Elasticache for Redis
+  #AWS ECS for other containers
+
 #consider this to test github actions locally:
   #https://github.com/nektos/act
 
@@ -167,17 +177,19 @@ jobs:
         #1 docker tag can only point to 1 image
         run: |
           export REGISTRY="${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
-          docker compose --file docker-compose.yaml up -d --no-deps --force-recreate --no-start --build
+          docker compose --file docker-compose-push-ecr.yaml up -d --no-deps --force-recreate --no-start --build
+          docker tag "postgres:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/postgres:${IMAGE_TAG}"
+          docker tag "redis:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
           docker tag "${DOCKER_COMPOSE_NAME}-django_celery_beat:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_beat:${IMAGE_TAG}"
           docker tag "${DOCKER_COMPOSE_NAME}-django_celery_worker:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_worker:${IMAGE_TAG}"
           docker tag "${DOCKER_COMPOSE_NAME}-django_gunicorn:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_gunicorn:${IMAGE_TAG}"
           docker tag "${DOCKER_COMPOSE_NAME}-nginx:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/nginx:${IMAGE_TAG}"
-          docker tag "redis:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
+          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/postgres:${IMAGE_TAG}"
+          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_beat:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_worker:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_gunicorn:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/nginx:${IMAGE_TAG}"
-          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
 
   #build frontend code > place at local static > use django collectstatic to also create backend static files and deploy entire static folder to S3
   #context:
