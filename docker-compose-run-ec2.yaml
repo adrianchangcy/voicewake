@@ -1,27 +1,27 @@
 #in compose.yaml, things such as "command" and "entrypoint" will override things like CMD and ENTRYPOINT at .dockerfile
   #therefore, it's best to resort to .dockerfile and entrypoint.sh before placing such things here
 #.dockerignore is expected to be at root directory of build context, i.e. where you are running "docker build" from
+
+#expecting env vars at runtime for this .yaml, referring to .github/workflows/main.yaml at docker_build_tag_push_to_ecr final step:
+  # DOCKER_COMPOSE_NAME: vw
+  # AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
+  # AWS_ECR_REGION_NAME: ${{ secrets.AWS_ECR_REGION_NAME }}
+  #manually define this so you have version control:
+  # IMAGE_TAG: ${{ github.event.pull_request.number }}
+
+#we are doing "docker pull" from ECR for built images, hence no .dockerfile
+
 name: vw
 services:
-  django_gunicorn:
-    build:
-      #. because it relies on files like manage.py
-      context: .
-      dockerfile: ./voicewake/docker/service-gunicorn.dockerfile
-    volumes:
-      - type: bind
-        source: ./static
-        target: /static
-      - type: bind
-        source: ./voicewake
-        target: /voicewake
-    # restart: always
+  postgres:
+    image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${DOCKER_COMPOSE_NAME}/postgres:${IMAGE_TAG}"
     ports:
-      #map port on host to port on container
-      - "5000:5000"
+      - "5432:5432"
+    #healthcheck seems to be required if you want other services to check it for "service_healthy" condition, else "dependency failed" error
     restart: unless-stopped
     healthcheck:
-      test: curl --fail http://127.0.0.1:5000 || exit 1
+      #must test with POSTGRES_DB and POSTGRES_USER, else it will try to use "root" and get "role 'root' does not exist"
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
       interval: 30s
       timeout: 60s
       retries: 5
@@ -32,15 +32,9 @@ services:
   #using own redis instead of AWS Elasticache to save cost
   #reliability from AWES Elasticache is not as important yet, due to low traffic and implementation at code on Redis downtime
   redis:
-    working_dir: /redis
-    image: redis:latest
-    #if always restart, then when a service has error/ends, it will restart again
-    # restart: always
+    image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
     ports:
       - "6379:6379"
-    # volumes:
-      # - /path/to/local/dаta:/root/redis
-      # - /path/to/local/redis.conf:/usr/local/etc/redis/redis.conf
     restart: unless-stopped
     healthcheck:
       #even when loading, Redis can still return exit code 0, so to be sure it's ready, expect "PONG"
@@ -52,21 +46,30 @@ services:
     networks:
       - backend
 
-  django_celery_worker:
-    build:
-      #. because it relies on files like manage.py
-      context: .
-      dockerfile: ./voicewake/docker/service-celery-worker.dockerfile
-    volumes:
-      - type: bind
-        source: ./static
-        target: /static
-      - type: bind
-        source: ./voicewake
-        target: /voicewake
-    # restart: always
+  django_gunicorn:
+    image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${DOCKER_COMPOSE_NAME}/django_gunicorn:${IMAGE_TAG}"
     ports:
-      #based on django_runserver/django_gunicorn
+      #map port on host to port on container
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: curl --fail http://127.0.0.1:5000 || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    networks:
+      - backend
+
+  django_celery_worker:
+    image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${DOCKER_COMPOSE_NAME}/django_celery_worker:${IMAGE_TAG}"
+    ports:
+      #this can be anything, since communication with django is using redis as broker via settings.CELERY_BROKER_URL
       - "8001:8001"
     depends_on:
       django_gunicorn:
@@ -82,20 +85,9 @@ services:
       - backend
 
   django_celery_beat:
-    build:
-      #. because it relies on files like manage.py
-      context: .
-      dockerfile: ./voicewake/docker/service-celery-beat.dockerfile
-    volumes:
-      - type: bind
-        source: ./static
-        target: /static
-      - type: bind
-        source: ./voicewake
-        target: /voicewake
-    # restart: always
+    image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${DOCKER_COMPOSE_NAME}/django_celery_beat:${IMAGE_TAG}"
     ports:
-      #based on django_runserver/django_gunicorn
+      #this can be anything, since communication with django is using redis as broker via settings.CELERY_BROKER_URL
       - "8002:8002"
     depends_on:
       django_gunicorn:
@@ -113,22 +105,12 @@ services:
       - backend
 
   nginx:
+    #expecting env vars at runtime: DJANGO_SERVICE_NAME, DJANGO_PORT, FAVICON_URL
     build:
       context: .
       dockerfile: ./nginx/Dockerfile
-    environment:
-      #base these off of actual Docker Django service name and its port
-      - DJANGO_SERVICE_NAME=django_gunicorn
-      - DJANGO_PORT=5000
-      #favicon
-      - FAVICON_URL=https://d3fpcqa3tewpp.cloudfront.net/static/prod/voicewake/favicon.svg
     ports:
       - "8080:8080"
-    volumes:
-      #Gunicorn will not serve /static/, so NGINX must do it directly
-      - type: bind
-        source: ./static
-        target: /static
     depends_on:
       django_gunicorn:
         condition: service_healthy
