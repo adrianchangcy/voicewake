@@ -1,0 +1,374 @@
+#!/bin/bash
+    #run this file as bash
+
+#=========PREREQUISITES=========
+#1, prepare repo from online machine for offline installation
+    #refer to ./local-create-offline-repo.sh
+
+#2, prepare VPC interface endpoint for ECR
+    #only turn on when needing ecr pull, then delete when done
+        #else 7.3usd per AZ per month
+            #https://aws.amazon.com/privatelink/pricing/
+    #steps
+        #VPC > endpoints > create endpoint > type (AWS services), services (com.amazonaws.us-east-1.ecr.api), subnets (select only 1 private subnet)
+        #VPC > endpoints > create endpoint > type (AWS services), services (com.amazonaws.us-east-1.ecr.dkr), subnets (select only 1 private subnet)
+    #notes
+        #you only have to stop here, no configuring Security Group or Route Table needed
+        #.dkr means Docker
+#===============================
+
+#edit this using "sudo vi ./stage.env"
+#leave empty for no accidental stage/prod crossover
+export STAGE_OR_PROD=
+
+#ECS + RDS is easier by a ton to set up
+    #no manual package management, auto env var management by specifying .env at S3, etc.
+#doing EC2 for everything in hopes of cost saving, since it's 0 users
+
+#import from S3
+    #if you get hanging network here, do Ctrl+C and rerun with "--debug" flag for potential clues
+    #it took a few minutes for the correct network settings, to go successful "aws s3 ls" and failing "aws s3 cp", to fully successful
+    #easier to do singular .env for entire machine
+sudo aws s3 cp "s3://voicewake-bucket/${STAGE_OR_PROD}.env" "./.env";
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/live-ec2-docker-compose.yaml ./live-ec2-docker-compose.yaml;
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/offline_repo.tar.gz ./offline_repo.tar.gz;
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/pgbackrest.tar.gz ./pgbackrest.tar.gz;
+
+#prepare env vars to automate the rest of the script
+export CURRENT_ENV=$(awk -F '=' '$1 == "CURRENT_ENV" {print $2}' .env);
+export DB_NAME=$(awk -F '=' '$1 == "DB_NAME" {print $2}' .env);
+export DB_PASSWORD=$(awk -F '=' '$1 == "DB_PASSWORD" {print $2}' .env);
+export AWS_S3_ACCESS_KEY_ID=$(awk -F '=' '$1 == "AWS_S3_ACCESS_KEY_ID" {print $2}' .env);
+export AWS_S3_SECRET_ACCESS_KEY=$(awk -F '=' '$1 == "AWS_S3_SECRET_ACCESS_KEY" {print $2}' .env);
+export AWS_S3_REGION_NAME=$(awk -F '=' '$1 == "AWS_S3_REGION_NAME" {print $2}' .env);
+export AWS_S3_MAIN_BUCKET_NAME=$(awk -F '=' '$1 == "AWS_S3_MAIN_BUCKET_NAME" {print $2}' .env);
+    #$() is command substitution, i.e. run command then output back using print
+    #-F '=' means to use '=' as separator for "value after ="
+        #seems to respect nextline
+    #$1 == "ENV_VAR" is an expression, i.e. actual is_equal
+
+#make directory
+sudo mkdir -p /opt/offline_repo
+
+#unpack into /opt, i.e. "optional", a conventional folder for storing software that is not part of core OS, to separate from /usr and /bin
+    #for tar:
+        #x for extract
+        #z for gnuzip
+        #v for verbose
+        #f for file, should come at last just before file name
+        #-C is change directory, i.e. unpack to specified destination
+sudo tar -xzvf offline_repo.tar.gz -C /opt;
+
+#create local .repo and replace its content
+    #replace instead of adding, so repeated commands still succeed
+    #piping echo to "tee" is a solution to "cat > file_path << EOF" not working even with sudo
+sudo touch /etc/yum.repos.d/offline.repo
+echo "
+[offline]
+name=Offline Repo
+baseurl=file:///opt/offline_repo/pkgs
+enabled=1
+gpgcheck=0
+" | sudo tee /etc/yum.repos.d/offline.repo
+
+#preventative measure to allow installation to be successful
+#by removing any stale locks, which shows error "waiting for process pid xxxx to finish"
+
+#check (if stale lock, will say "no such process"):
+    #cat /var/run/dnf.pid
+    #ps -p $(cat /var/run/dnf.pid)
+
+#fix (using semicolon so you can copy and run entire block, as && exits on first failure)
+sudo killall dnf rpm;
+sudo rm -f /var/run/dnf.pid;
+sudo rm -f /var/cache/dnf/*lock*;
+sudo rm -f /var/lib/rpm/.rpm.lock;
+sudo rpm --rebuilddb;
+sudo dnf clean all;
+
+#install packages, use offline mode only at current line
+    #-v is verbose
+    #if you have more packages, just continue, e.g. install docker mypackage1 mypackage2 -v
+#docker + postgresql
+sudo dnf --disablerepo="*" --enablerepo="offline" install \
+    docker \
+    postgresql17 \
+    postgresql17-server \
+    -y -v;
+#pgbackrest dependencies
+sudo dnf --disablerepo="*" --enablerepo="offline" install \
+    postgresql-libs libssh2 \
+    -y -v;
+#meson + ninja-build + build dependencies
+sudo dnf --disablerepo="*" --enablerepo="offline" install \
+    meson ninja-build \
+    postgresql17-devel \
+    postgresql-libs libssh2 \
+    gcc openssl-devel libxml2-devel lz4-devel libzstd-devel bzip2-devel libyaml-devel libssh2-devel \
+    -y -v;
+
+#set up psql directories if first time
+    #do this early to have file path ready for pgbackrest
+sudo postgresql-setup --initdb
+
+#validate psql changes
+    #docker0 is default Docker interface created
+        #after x.x.x.0, first usable IP x.x.x.1 is the one to reach host machine from within container
+        #default interface's IP to host machine will be 172.17.0.1
+    #for "ss", expect 172.17.0.1:5432 or 0.0.0.0:5432 or [::]:5432
+        #127.0.0.1:5432 alone is not enough
+sudo -u postgres -- psql -c "SHOW listen_addresses;";
+ip addr show docker0;
+sudo ss -tulpn | grep postgres;
+
+#install pgbackrest
+mkdir -p /build && \
+sudo tar -xzvf pgbackrest.tar.gz -C /build && \
+sudo meson setup /build/pgbackrest /build/pgbackrest-release-2.57.0 && \
+sudo ninja -C /build/pgbackrest && \
+sudo cp /build/pgbackrest/src/pgbackrest /usr/bin;
+    #meson will set up files for ninja to build at /build/pgbackrest
+    #"pgbackrest-release-2.57.0" is original extracted directory name
+    #meson + ninja is the intended convention
+    #https://pgbackrest.org/user-guide-rhel.html#build
+
+#prepare pgbackrest directories and permissions
+#configuration directories
+sudo chmod 755 /usr/bin/pgbackrest;
+sudo mkdir -p -m 770 /var/log/pgbackrest;
+sudo chown postgres:postgres /var/log/pgbackrest;
+sudo mkdir -p /etc/pgbackrest;
+sudo mkdir -p /etc/pgbackrest/conf.d;
+sudo touch /etc/pgbackrest/pgbackrest.conf;
+sudo chmod 640 /etc/pgbackrest/pgbackrest.conf;
+sudo chown postgres:postgres /etc/pgbackrest/pgbackrest.conf;
+#backup repository
+sudo mkdir -p /var/lib/pgbackrest;
+sudo chmod 750 /var/lib/pgbackrest;
+sudo chown postgres:postgres /var/lib/pgbackrest;
+#logs
+sudo mkdir -p /var/log/pgbackrest;
+sudo chmod 750 /var/log/pgbackrest;
+sudo chown postgres:postgres /var/log/pgbackrest;
+#tmp
+sudo mkdir -p /tmp/pgbackrest;
+sudo chmod 750 /tmp/pgbackrest;
+sudo chown postgres:postgres /tmp/pgbackrest;
+
+#prepare pgbackrest stanza, so it knows where our directories are
+    #pg1-path is psql data directory, i.e. "Environment=PGDATA=" in "sudo systemctl cat postgresql"
+    #repo1-path is the path in S3 bucket, has no relation to host machine directory
+    #[main]/[global] are just any name you choose for commands to reference later
+echo "
+[${CURRENT_ENV}]
+pg1-path=/var/lib/pgsql/data
+
+[global]
+repo1-type=s3
+repo1-path=/pgbackrest_output
+repo1-s3-bucket=${AWS_S3_MAIN_BUCKET_NAME}
+repo1-s3-endpoint=s3.amazonaws.com
+repo1-s3-region=${AWS_S3_REGION_NAME}
+repo1-s3-key=${AWS_S3_ACCESS_KEY_ID}
+repo1-s3-key-secret=${AWS_S3_SECRET_ACCESS_KEY}
+" | sudo tee /etc/pgbackrest/pgbackrest.conf;
+
+#replace files for psql, restart
+    #workflow
+        #if first time setting up EC2:
+            #modify these files in EC2 using vi > copy out to S3 > paste to local git repo
+        #on change:
+            #change here at local git repo > paste back into S3 > copy at EC2
+    #for first time, use vi (guide at foot of this file) to edit manually inside EC2:
+        #sudo vi /var/lib/pgsql/data/postgresql.conf
+            #modify (remember to unhash):
+                #listen_addresses = '*'
+                #archive_mode = on
+                #archive_command = 'pgbackrest --stanza=main archive-push %p'
+                #wal_level = replica
+                #max_wal_senders = 3
+                #hot_standby = on
+        #sudo vi /var/lib/pgsql/data/pg_hba.conf
+            #modify:
+                # IPv4 local connections:
+                #host    all             all             172.0.0.0/8            md5
+            #remove:
+                # IPv6 local connections:
+                #host    all             all             ::/0                 md5
+    #to copy out from EC2 to S3, so future new EC2s can just copy:
+        #sudo aws s3 cp /var/lib/pgsql/data/postgresql.conf s3://voicewake-bucket/ec2-setup-without-nat/postgresql.conf
+        #sudo aws s3 cp /var/lib/pgsql/data/pg_hba.conf s3://voicewake-bucket/ec2-setup-without-nat/pg_hba.conf
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/postgresql.conf /var/lib/pgsql/data/postgresql.conf;
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/pg_hba.conf /var/lib/pgsql/data/pg_hba.conf;
+
+#apply changes to postgresql.conf that requires any env vars
+    #apply to variables with/without "#" for better flexibility
+sudo awk -i inplace \
+    -v key="archive_command" \
+    -v value="'pgbackrest --stanza=${CURRENT_ENV} archive-push %p'" \
+    'BEGINFILE {updated=0} $1 == key {print key "=" value; updated=1; next} {print} ENDFILE {}' \
+    /var/lib/pgsql/data/postgresql.conf;
+    #-i inplace means edit file in place
+    #-v is awk vars
+    #BEGINFILE {updated=0} resets flag when each file is processed
+    #on $1==key match, insert new key-var via print, goes to next line
+    #{print} inserts unmodified lines as-is
+
+#apply changes so pgbackrest can access archive_command in postgresql.conf
+sudo systemctl restart postgresql;
+
+#let pgbackrest prepare files at S3, based on repo1-path
+sudo -u postgres pgbackrest stanza-create --stanza="${CURRENT_ENV}" --log-level-console=info;
+
+#check if pgbackrest is ok
+    #when it warns "FileMissingError" about archive.info, it 
+sudo -u postgres pgbackrest check --stanza="${CURRENT_ENV}" --log-level-console=info;
+
+#auto-start daemons next time
+sudo systemctl enable docker
+sudo systemctl enable postgresql
+
+#start daemons
+sudo systemctl start docker
+sudo systemctl start postgresql
+
+#check if postgresql.conf is applied to db
+sudo -u postgres -- psql -c "
+    show wal_level;
+    show archive_mode;
+    show archive_command;
+    show max_wal_senders;
+    show hot_standby;
+";
+
+#check
+#sudo systemctl status docker
+#sudo systemctl status postgres
+
+#set up superuser for postgres, use it to run psql commands
+#edit password in psql, create db, add all roles to default user in db
+echo ${DB_PASSWORD} | sudo passwd postgres --stdin;
+sudo -u postgres -- psql -c "ALTER USER postgres WITH PASSWORD '${DB_PASSWORD}';";
+sudo -u postgres -- psql -c "CREATE DATABASE ${DB_NAME};";
+sudo -u postgres -- psql -c "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO postgres;";
+    #"sudo su - postgres"
+        #"su" is an executable
+        #"s" is to invoke login shell session as that user
+        #"u" is user
+        #"-" is to switch to that user's own env vars, without preserving current env vars in new session
+    #"sudo -u postgres"
+        #"-u" is an executable
+        #different from "su", directly executes commands as that user without new login session
+        #use current session's env vars to interpolate as the string is defined, before it's executed
+    #"--"
+        #stop processing any options/flags beyond it
+        #i.e. the "-c" above is not an additional option to "-u"
+
+#log in to ECR
+    #these are in .env
+    #env vars only persist at current terminal session, so only for current Instance Connect
+    #one-liner makes it easy to manually copy & paste
+    #docker login must be performed with sudo, otherwise it will only warn "authentication token expired"
+export AWS_ECR_REGION_NAME=us-east-1 && export AWS_ECR_ACCOUNT_ID=981060373951
+aws ecr get-login-password --region "${AWS_ECR_REGION_NAME}" \
+    | sudo docker login -u AWS --password-stdin "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
+
+#pull from ECR (will not repull if images are identical)
+    #remember to exclude .env inside .dockerfile build step, else it persists in container
+    #containers also cannot access env vars at host machine
+    #use --env-file to pass env vars in instead
+    #compose is included in docker itself, but must be typed as "docker-compose"
+sudo docker-compose --file ./live-ec2-docker-compose.yaml --env-file ./.env pull
+
+#start docker
+    #-d for detached, i.e. current terminal not occupied by docker
+        #if running without this, press d to manually detach
+        #not using this can show errors better
+    #up SERVICE_NAME to run only that service
+    #--no-deps to ignore "depends" from yaml
+sudo docker-compose --file ./live-ec2-docker-compose.yaml --env-file ./.env up
+
+#full backup and incremental backup for db
+    #intentionally placed here, after gunicorn performs db migration
+sudo -u postgres pgbackrest --stanza=main backup --type=full;
+sudo -u postgres pgbackrest --stanza=main backup --type=incr;
+
+
+
+
+
+
+#sources:
+    #setting up pgbackrest
+        #https://bootvar.com/guide-to-setup-pgbackrest/
+            #this page is missing stanza-create
+        #https://pgbackrest.org/configuration.html
+
+
+#tooltips:
+
+    #use vi (visual editor) to edit files manually
+        #press "i" to start inserting/editing, ESC to exit
+        #press ":x" to save and quit, or ":q!" to quit without saving
+        #press "/" to search, ESC to exit
+
+    #kill specific container
+        #sudo docker ps
+        #sudo docker kill CONTAINER_ID
+
+    #kill all containers
+        #sudo docker ps -q | xargs -r sudo docker kill
+            #for every container ID piped from left, run command on the right
+            #-r means "don't run if input is empty"
+
+    #enter and exit container as root
+        #sudo docker ps
+        #sudo docker exec -it CONTAINER_ID_OR_NAME /bin/bash
+        #exit
+
+    #show container logs
+        #sudo docker logs CONTAINER_ID_OR_NAME
+
+    #enter and exit container by container name string match
+        #sudo docker ps -aqf "name=INSERT_HERE-1$" | xargs -I CONTAINER_ID sudo docker exec -it CONTAINER_ID /bin/bash
+        #exit
+            #must have tty:true in compose.yaml for every container
+
+    #restart docker
+        #sudo systemctl restart docker
+
+    #stop docker
+        #sudo systemctl stop docker.socket; sudo systemctl stop docker.service;
+
+    #find psql logs
+        #use "ls" to list files in a folder
+            #sudo ls /var/lib/pgsql/data/log/
+        #default log file format is "postgresql-%a.log"
+            #sudo cat /var/lib/pgsql/data/log/postgresql-Wed.log
+
+    #delete file
+        #rm -f filename.txt
+
+    #list tables in database
+        #sudo su - postgres
+        #psql -c "SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema');"
+
+    #handy postgresql troubleshooting commands
+        #locate folder containing postgresql.conf and pg_hba.conf
+            #sudo systemctl cat postgresql
+            #you should see something like: Environment=PGDATA=/var/lib/pgsql/data
+            #hence /var/lib/psql/data/postgresql.conf, etc.
+            #one-liner:
+                #export PSQL_PGDATA_PATH=$(sudo systemctl cat postgresql | awk -F "=PGDATA=" '$1 == "Environment" {print $2}')
+        #see if postgresql.conf is applied
+            #sudo su - postgres
+            #psql -c "SHOW listen_addresses;"
+        #for psql at host machine and apps in docker containers, see if postgres listens to interface IP
+            #check your Docker's /16 range
+                #ip addr show docker0
+            #expect 172.17.0.1:5432 or 0.0.0.0:5432, 127.0.0.1:5432 is not enough
+                #sudo ss -tulpn | grep postgres
+        #check postgresql's own log files
+            #journalctl -u postgresql
+
+

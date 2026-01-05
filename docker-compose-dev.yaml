@@ -5,6 +5,7 @@ name: vw_dev
 services:
   postgres:
     image: postgres:latest
+    platform: "linux/amd64"
     ports:
       #using 5432+n for host port (left) in case you already have 5432 occupied by direct postgres installation on localhost machine
       - "5433:5432"
@@ -40,6 +41,7 @@ services:
     image: redis:latest
     #if always restart, then when a service has error/ends, it will restart again
     # restart: always
+    platform: "linux/amd64"
     ports:
       - "6379:6379"
     # volumes:
@@ -57,6 +59,7 @@ services:
       - backend
 
   django_runserver:
+    tty: true
     build:
       context: .
       dockerfile: ./voicewake/docker/service-django-runserver.dockerfile
@@ -73,6 +76,7 @@ services:
     restart: unless-stopped
     env_file:
       - /env/.env
+    platform: "linux/amd64"
     ports:
       #map port on host to port on container
       - "8000:8000"
@@ -86,6 +90,7 @@ services:
     #no need healthcheck for runserver if we have django_runserver.py
 
   django_gunicorn:
+    tty: true
     build:
       #. because it relies on files like manage.py
       context: .
@@ -100,6 +105,7 @@ services:
     # restart: always
     env_file:
       - /env/.env
+    platform: "linux/amd64"
     ports:
       #map port on host to port on container
       - "5000:5000"
@@ -133,6 +139,7 @@ services:
     # restart: always
     env_file:
       - /env/.env
+    platform: "linux/amd64"
     ports:
       #this can be anything, since communication with django is using redis as broker via settings.CELERY_BROKER_URL
       - "8001:8001"
@@ -168,6 +175,7 @@ services:
     # restart: always
     env_file:
       - /env/.env
+    platform: "linux/amd64"
     ports:
       #this can be anything, since communication with django is using redis as broker via settings.CELERY_BROKER_URL
       - "8002:8002"
@@ -195,6 +203,7 @@ services:
     env_file:
       - ./env/.env
       #expecting env vars at runtime: DJANGO_SERVICE_NAME, DJANGO_PORT, FAVICON_URL
+    platform: "linux/amd64"
     ports:
       - "8080:8080"
     volumes:
@@ -246,6 +255,7 @@ services:
       #   target: /tailwind.config.js
       #in container, specify the folder we want to ignore from bind-mount
       - /frontend/node_modules
+    platform: "linux/amd64"
     ports:
       - "${VITE_PORT}:${VITE_PORT}"
     environment: 
@@ -263,6 +273,7 @@ services:
     build:
       context: .
       dockerfile: ./service-tailwind.dockerfile
+    platform: "linux/amd64"
     ports:
       - "3000:3000"
     #we use bind mount between host files and container files for two-way sync
@@ -296,6 +307,18 @@ services:
       context: .
       dockerfile: ./service-update-pip.dockerfile
     #no volume binding, only copy files directly to host machine once satisfied
+
+  #empty container to download and compile packages for air-gapped AWS Linux 2023
+  aws_linux:
+    image: amazonlinux:latest
+    tty: true
+    platform: "linux/amd64"
+    ports:
+      - "6677:6677"
+    volumes:
+      - type: bind
+        source: ./ec2-setup/local-create-offline-repo.sh
+        target: /local-create-offline-repo.sh
 
 volumes:
   static:
