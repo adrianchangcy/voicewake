@@ -107,19 +107,95 @@ sudo dnf --disablerepo="*" --enablerepo="offline" install \
     gcc openssl-devel libxml2-devel lz4-devel libzstd-devel bzip2-devel libyaml-devel libssh2-devel \
     -y -v;
 
+#================================
+#========POSTGRESQL SETUP========
+#================================
+
 #set up psql directories if first time
     #do this early to have file path ready for pgbackrest
-sudo postgresql-setup --initdb
+    #setup will fail if it already exists
+sudo postgresql-setup --initdb;
 
-#validate psql changes
-    #docker0 is default Docker interface created
-        #after x.x.x.0, first usable IP x.x.x.1 is the one to reach host machine from within container
-        #default interface's IP to host machine will be 172.17.0.1
-    #for "ss", expect 172.17.0.1:5432 or 0.0.0.0:5432 or [::]:5432
-        #127.0.0.1:5432 alone is not enough
-sudo -u postgres -- psql -c "SHOW listen_addresses;";
-ip addr show docker0;
-sudo ss -tulpn | grep postgres;
+#enable auto-start next time, then start
+sudo systemctl enable postgresql;
+sudo systemctl start postgresql;
+
+#replace files for psql, restart
+    #workflow
+        #if first time setting up EC2:
+            #modify these files in EC2 using vi > copy out to S3 > paste to local git repo
+        #on change:
+            #change here at local git repo > paste back into S3 > copy at EC2
+    #IP context:
+        #private reserved IPs defined by RFC1918 is "172.16.0.0 to 172.31.255.255", a.k.a. "172.16.0.0/12"
+        #default docker0 interface is 172.16.0.0/16, so after first IP, the IP to get to host is 172.16.0.1
+        #IP range of containers are not guaranteed, as it draws from full private reserved IPs, so do "172.16.0.0/12" to cover container IPs
+    #for first time, use vi (guide at foot of this file) to edit manually inside EC2:
+        #sudo vi /var/lib/pgsql/data/postgresql.conf
+            #modify (remember to unhash):
+                #listen_addresses = '*'
+                #archive_mode = on
+                #archive_command = 'pgbackrest --stanza=main archive-push %p'
+                #wal_level = replica
+                #max_wal_senders = 3
+                #hot_standby = on
+        #sudo vi /var/lib/pgsql/data/pg_hba.conf
+            #modify:
+                # IPv4 local connections:
+                #host    all             all             172.16.0.0/12            md5
+            #remove:
+                # IPv6 local connections:
+                #host    all             all             ::/0                 md5
+    #to copy out from EC2 to S3, so future new EC2s can just copy back in:
+        #sudo aws s3 cp /var/lib/pgsql/data/postgresql.conf s3://voicewake-bucket/ec2-setup-without-nat/postgresql.conf
+        #sudo aws s3 cp /var/lib/pgsql/data/pg_hba.conf s3://voicewake-bucket/ec2-setup-without-nat/pg_hba.conf
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/postgresql.conf /var/lib/pgsql/data/postgresql.conf;
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/pg_hba.conf /var/lib/pgsql/data/pg_hba.conf;
+
+#restart to apply changes
+sudo systemctl restart postgresql;
+
+#set up superuser for postgres, use it to run psql commands
+#edit password in psql, create db, add all roles to default user in db
+echo ${DB_PASSWORD} | sudo passwd postgres --stdin;
+sudo -u postgres -- psql -c "ALTER USER postgres WITH PASSWORD '${DB_PASSWORD}';";
+sudo -u postgres -- psql -c "CREATE DATABASE ${DB_NAME};";
+sudo -u postgres -- psql -c "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO postgres;";
+    #"sudo su - postgres"
+        #"su" is an executable
+        #"s" is to invoke login shell session as that user
+        #"u" is user
+        #"-" is to switch to that user's own env vars, without preserving current env vars in new session
+    #"sudo -u postgres"
+        #"-u" is an executable
+        #different from "su", directly executes commands as that user without new login session
+        #use current session's env vars to interpolate as the string is defined, before it's executed
+    #"--"
+        #stop processing any options/flags beyond it
+        #i.e. the "-c" above is not an additional option to "-u"
+
+#check if postgresql.conf is applied to db
+sudo -u postgres -- psql -c "
+    show listen_addresses;
+    show wal_level;
+    show archive_mode;
+    show archive_command;
+    show max_wal_senders;
+    show hot_standby;
+";
+
+#check
+sudo systemctl status postgres;
+
+#================================
+#========POSTGRESQL END==========
+#================================
+
+
+
+#==================================
+#========PGBACKREST SETUP==========
+#==================================
 
 #install pgbackrest
 mkdir -p /build && \
@@ -156,13 +232,25 @@ sudo chmod 750 /tmp/pgbackrest;
 sudo chown postgres:postgres /tmp/pgbackrest;
 
 #prepare pgbackrest stanza, so it knows where our directories are
-    #pg1-path is psql data directory, i.e. "Environment=PGDATA=" in "sudo systemctl cat postgresql"
-    #repo1-path is the path in S3 bucket, has no relation to host machine directory
-    #[main]/[global] are just any name you choose for commands to reference later
+    #concepts
+        #write-ahead log (WAL): crucial record of transactions made in db, enables PITR, and fills in for corrupted backups
+        #continuous archiving: postgres continuously pushes its WAL for archiving
+        #point-in-time recovery (PITR): uses WAL to precisely recover db from x specific time
+        #incremental backup: backup only changes from last inc backup, and 1 inc backup being corrupted with no WAL means data permanently gone
+        #differential backup: backup only changes from last full backup, so size is increasingly large until next full backup
+    #process
+        #full backup on django migration > cron full backup + cron partial backup > expire old full backups + relevant WAL
+        #postgres itself decides when WAL is ready, and will call the WAL backup via postgresql.conf archive_mode + archive_command
+    #key-vals
+        #pg1-path: is psql data directory, i.e. "Environment=PGDATA=" in "sudo systemctl cat postgresql"
+        #repo1-path: is the path in S3 bucket, has no relation to host machine directory
+        #[main]/[global]: any name you choose for commands to reference later
+        #repo1-retention-full: expires older full backups so only latest x amount can exist
+        #repo1-retention-diff: expires older diff backups so only latest x amount can exist
+        #start-fast: on postgresql start, start immediately while ignoring checkpoint_timeout and checkpoint_segments in postgresql.conf
 echo "
 [${CURRENT_ENV}]
 pg1-path=/var/lib/pgsql/data
-
 [global]
 repo1-type=s3
 repo1-path=/pgbackrest_output
@@ -171,35 +259,10 @@ repo1-s3-endpoint=s3.amazonaws.com
 repo1-s3-region=${AWS_S3_REGION_NAME}
 repo1-s3-key=${AWS_S3_ACCESS_KEY_ID}
 repo1-s3-key-secret=${AWS_S3_SECRET_ACCESS_KEY}
+repo1-retention-full=2
+repo1-retention-diff=1
+start-fast=y
 " | sudo tee /etc/pgbackrest/pgbackrest.conf;
-
-#replace files for psql, restart
-    #workflow
-        #if first time setting up EC2:
-            #modify these files in EC2 using vi > copy out to S3 > paste to local git repo
-        #on change:
-            #change here at local git repo > paste back into S3 > copy at EC2
-    #for first time, use vi (guide at foot of this file) to edit manually inside EC2:
-        #sudo vi /var/lib/pgsql/data/postgresql.conf
-            #modify (remember to unhash):
-                #listen_addresses = '*'
-                #archive_mode = on
-                #archive_command = 'pgbackrest --stanza=main archive-push %p'
-                #wal_level = replica
-                #max_wal_senders = 3
-                #hot_standby = on
-        #sudo vi /var/lib/pgsql/data/pg_hba.conf
-            #modify:
-                # IPv4 local connections:
-                #host    all             all             172.0.0.0/8            md5
-            #remove:
-                # IPv6 local connections:
-                #host    all             all             ::/0                 md5
-    #to copy out from EC2 to S3, so future new EC2s can just copy:
-        #sudo aws s3 cp /var/lib/pgsql/data/postgresql.conf s3://voicewake-bucket/ec2-setup-without-nat/postgresql.conf
-        #sudo aws s3 cp /var/lib/pgsql/data/pg_hba.conf s3://voicewake-bucket/ec2-setup-without-nat/pg_hba.conf
-sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/postgresql.conf /var/lib/pgsql/data/postgresql.conf;
-sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/pg_hba.conf /var/lib/pgsql/data/pg_hba.conf;
 
 #apply changes to postgresql.conf that requires any env vars
     #apply to variables with/without "#" for better flexibility
@@ -224,45 +287,19 @@ sudo -u postgres pgbackrest stanza-create --stanza="${CURRENT_ENV}" --log-level-
     #when it warns "FileMissingError" about archive.info, it 
 sudo -u postgres pgbackrest check --stanza="${CURRENT_ENV}" --log-level-console=info;
 
-#auto-start daemons next time
-sudo systemctl enable docker
-sudo systemctl enable postgresql
+#==================================
+#=========PGBACKREST END===========
+#==================================
 
-#start daemons
-sudo systemctl start docker
-sudo systemctl start postgresql
 
-#check if postgresql.conf is applied to db
-sudo -u postgres -- psql -c "
-    show wal_level;
-    show archive_mode;
-    show archive_command;
-    show max_wal_senders;
-    show hot_standby;
-";
 
-#check
-#sudo systemctl status docker
-#sudo systemctl status postgres
+#============================
+#========DOCKER SETUP========
+#============================
 
-#set up superuser for postgres, use it to run psql commands
-#edit password in psql, create db, add all roles to default user in db
-echo ${DB_PASSWORD} | sudo passwd postgres --stdin;
-sudo -u postgres -- psql -c "ALTER USER postgres WITH PASSWORD '${DB_PASSWORD}';";
-sudo -u postgres -- psql -c "CREATE DATABASE ${DB_NAME};";
-sudo -u postgres -- psql -c "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO postgres;";
-    #"sudo su - postgres"
-        #"su" is an executable
-        #"s" is to invoke login shell session as that user
-        #"u" is user
-        #"-" is to switch to that user's own env vars, without preserving current env vars in new session
-    #"sudo -u postgres"
-        #"-u" is an executable
-        #different from "su", directly executes commands as that user without new login session
-        #use current session's env vars to interpolate as the string is defined, before it's executed
-    #"--"
-        #stop processing any options/flags beyond it
-        #i.e. the "-c" above is not an additional option to "-u"
+#enable auto-start next time, then start
+sudo systemctl enable docker;
+sudo systemctl start docker;
 
 #log in to ECR
     #these are in .env
@@ -288,10 +325,135 @@ sudo docker-compose --file ./live-ec2-docker-compose.yaml --env-file ./.env pull
     #--no-deps to ignore "depends" from yaml
 sudo docker-compose --file ./live-ec2-docker-compose.yaml --env-file ./.env up
 
-#full backup and incremental backup for db
-    #intentionally placed here, after gunicorn performs db migration
+#run first full backup after django migrations from gunicorn container
+    #do cronjob for full backup less frequently, i.e. --type=full
+    #do cronjob for partial backup more frequently, i.e. --type=incr
 sudo -u postgres pgbackrest --stanza=main backup --type=full;
 sudo -u postgres pgbackrest --stanza=main backup --type=incr;
+
+#make sure postgresql listens to port meant for host machine in default docker0 interface
+    #docker0 is default Docker interface created
+        #after x.x.x.0, first usable IP x.x.x.1 is the one to reach host machine from within container
+        #default interface's IP to host machine will be 172.17.0.1
+    #for "ss", expect 172.17.0.1:5432 or 0.0.0.0:5432 or [::]:5432
+        #127.0.0.1:5432 alone is not enough
+        #0.0.0.0 is fine, pg_hba.conf will dictate which IP is allowed
+ip addr show docker0;
+sudo ss -tulpn | grep postgres;
+
+#============================
+#=========DOCKER END=========
+#============================
+
+
+#==============================================
+#=========CRONJOBS USING SYSTEMD SETUP=========
+#==============================================
+
+#explanation:
+    #3 file types:
+        #.service, describes work to do
+        #.timer, when to run the work
+        #.slice, dictates resource limits
+    #why this over crontab
+        #more features, can specify resource limits, more flexible, better debugging due to logs
+        #AWS Linux 2023 discourages crontab, and insists on using systemd timers
+
+#cronjob for full pgbackrest backup
+#service
+echo "
+[Unit]
+Description=Runs pgbackrest with full backup
+Wants=db-backup-full.timer
+[Service]
+ExecStart=sudo -u postgres pgbackrest --stanza=main backup --type=full
+WorkingDirectory=~
+Slice=db-backup-full.slice
+[Install]
+WantedBy=multi-user.target
+" | sudo tee /etc/systemd/system/db-backup-full.service;
+#timer, every week
+echo "
+[Unit]
+Description=Run db-backup-full.service every week
+Requires=db-backup-full.service
+[Timer]
+Unit=db-backup-full.service
+OnUnitInactiveSec=604800s
+RandomizedDelaySec=0s
+AccuracySec=1s
+[Install]
+WantedBy=timers.target
+" | sudo tee /etc/systemd/system/db-backup-full.timer;
+#slice
+echo "
+[Unit]
+Description=Limited db-backup-full slice
+DefaultDependencies=no
+Before=slices.target
+[Slice]
+CPUQuota=10%
+MemoryLimit=200M
+" | sudo tee /etc/systemd/system/db-backup-full.slice;
+
+#cronjob for differential pgbackrest backup
+#service
+echo "
+[Unit]
+Description=Runs pgbackrest with incr backup
+Wants=db-backup-incr.timer
+[Service]
+ExecStart=sudo -u postgres pgbackrest --stanza=main backup --type=incr
+WorkingDirectory=~
+Slice=db-backup-incr.slice
+[Install]
+WantedBy=multi-user.target
+" | sudo tee /etc/systemd/system/db-backup-incr.service;
+#timer, every week
+echo "
+[Unit]
+Description=Run db-backup-incr.service every week
+Requires=db-backup-incr.service
+[Timer]
+Unit=db-backup-incr.service
+OnUnitInactiveSec=604800s
+RandomizedDelaySec=0s
+AccuracySec=1s
+[Install]
+WantedBy=timers.target
+" | sudo tee /etc/systemd/system/db-backup-incr.timer;
+#slice
+echo "
+[Unit]
+Description=Limited db-backup-incr slice
+DefaultDependencies=no
+Before=slices.target
+[Slice]
+CPUQuota=10%
+MemoryLimit=200M
+" | sudo tee /etc/systemd/system/db-backup-incr.slice;
+
+#restart systemd
+    #does not restart other main services like docker, unless systemd detects related changes
+    #with start-fast:y at pgbackrest.conf, these will run immediately, so only need to run here once after Django migrations
+sudo systemctl stop db-backup-full db-backup-incr;
+sudo systemctl daemon-reload;
+sudo systemctl enable db-backup-full.timer db-backup-incr.timer;
+sudo systemctl start db-backup-full db-backup-incr;
+
+#useful commands
+#systemctl start SERVICE
+#systemctl stop SERVICE
+#systemctl status SERVICE
+#systemctl list-timers  # view the status of the timers
+#journalctl  # view the full systemd logs in less
+#journalctl -u SERVICE  # view the logs for a specific service
+#journalctl -f  # tail the logs
+#journalctl -f -u SERVICE  # tail the logs for a specific service
+
+#==============================================
+#==========CRONJOBS USING SYSTEMD END==========
+#==============================================
 
 
 
@@ -303,6 +465,9 @@ sudo -u postgres pgbackrest --stanza=main backup --type=incr;
         #https://bootvar.com/guide-to-setup-pgbackrest/
             #this page is missing stanza-create
         #https://pgbackrest.org/configuration.html
+    #setting up systemd timers
+        #https://medium.com/horrible-hacks/using-systemd-as-a-better-cron-a4023eea996d
+        #https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html
 
 
 #tooltips:
