@@ -178,13 +178,11 @@ jobs:
         run: |
           export REGISTRY="${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
           docker compose --file docker-compose-push-ecr.yaml up -d --no-deps --force-recreate --no-start --build
-          docker tag "postgres:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/postgres:${IMAGE_TAG}"
           docker tag "redis:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
           docker tag "${DOCKER_COMPOSE_NAME}-django_celery_beat:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_beat:${IMAGE_TAG}"
           docker tag "${DOCKER_COMPOSE_NAME}-django_celery_worker:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_worker:${IMAGE_TAG}"
           docker tag "${DOCKER_COMPOSE_NAME}-django_gunicorn:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_gunicorn:${IMAGE_TAG}"
           docker tag "${DOCKER_COMPOSE_NAME}-nginx:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/nginx:${IMAGE_TAG}"
-          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/postgres:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_beat:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_worker:${IMAGE_TAG}"
