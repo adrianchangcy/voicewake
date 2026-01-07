@@ -338,7 +338,7 @@ sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env pull
         #not using this can show errors better
     #up SERVICE_NAME to run only that service
     #--no-deps to ignore "depends" from yaml
-sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env up;
+sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env up -d;
 
 #run first full backup after django migrations from gunicorn container
     #do cronjob for full backup less frequently, i.e. --type=full
@@ -424,14 +424,14 @@ Slice=db-backup-incr.slice
 [Install]
 WantedBy=multi-user.target
 " | sudo tee /etc/systemd/system/db-backup-incr.service;
-#timer, every week
+#timer, every day
 echo "
 [Unit]
-Description=Run db-backup-incr.service every week
+Description=Run db-backup-incr.service every day
 Requires=db-backup-incr.service
 [Timer]
 Unit=db-backup-incr.service
-OnUnitInactiveSec=604800s
+OnUnitInactiveSec=86400s
 RandomizedDelaySec=0s
 AccuracySec=1s
 [Install]
