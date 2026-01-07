@@ -43,7 +43,7 @@ sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/offline_repo.tar.gz .
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/pgbackrest.tar.gz ./pgbackrest.tar.gz;
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/docker-compose /usr/libexec/docker/cli-plugins/docker-compose;
 
-#add docker-compose as plugin (officially recommended) to docker
+#add docker-compose as docker plugin (officially recommended)
     #you will be using it via "docker compose", not "docker-compose" anymore
 sudo chmod +x /usr/libexec/docker/cli-plugins/docker-compose;
 
