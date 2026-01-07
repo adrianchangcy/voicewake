@@ -317,7 +317,7 @@ services:
       - "6677:6677"
     volumes:
       - type: bind
-        source: ./ec2-setup/local-create-offline-repo.sh
+        source: ./ec2-setup-without-nat/local-create-offline-repo.sh
         target: /local-create-offline-repo.sh
 
 volumes:

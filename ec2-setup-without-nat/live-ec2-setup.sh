@@ -33,6 +33,11 @@ sudo aws s3 cp "s3://voicewake-bucket/${STAGE_OR_PROD}.env" "./.env";
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/live-ec2-docker-compose.yaml ./live-ec2-docker-compose.yaml;
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/offline_repo.tar.gz ./offline_repo.tar.gz;
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/pgbackrest.tar.gz ./pgbackrest.tar.gz;
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/docker-compose /usr/libexec/docker/cli-plugins/docker-compose;
+
+#add docker-compose as plugin (officially recommended) to docker
+    #you will be using it via "docker compose", not "docker-compose" anymore
+sudo chmod +x /usr/libexec/docker/cli-plugins/docker-compose;
 
 #prepare env vars to automate the rest of the script
 export CURRENT_ENV=$(awk -F '=' '$1 == "CURRENT_ENV" {print $2}' .env);
@@ -297,6 +302,9 @@ sudo -u postgres pgbackrest check --stanza="${CURRENT_ENV}" --log-level-console=
 #========DOCKER SETUP========
 #============================
 
+#be sure you have VPC endpoints created for ecr.dkr + ecr.api
+    #these don't need routing at security group's inbound/outbound rules
+
 #enable auto-start next time, then start
 sudo systemctl enable docker;
 sudo systemctl start docker;
@@ -306,16 +314,15 @@ sudo systemctl start docker;
     #env vars only persist at current terminal session, so only for current Instance Connect
     #one-liner makes it easy to manually copy & paste
     #docker login must be performed with sudo, otherwise it will only warn "authentication token expired"
-export AWS_ECR_REGION_NAME=us-east-1 && export AWS_ECR_ACCOUNT_ID=981060373951
+export AWS_ECR_REGION_NAME=us-east-1 && export AWS_ECR_ACCOUNT_ID=981060373951;
 aws ecr get-login-password --region "${AWS_ECR_REGION_NAME}" \
-    | sudo docker login -u AWS --password-stdin "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
+    | sudo docker login -u AWS --password-stdin "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com";
 
 #pull from ECR (will not repull if images are identical)
     #remember to exclude .env inside .dockerfile build step, else it persists in container
     #containers also cannot access env vars at host machine
     #use --env-file to pass env vars in instead
-    #compose is included in docker itself, but must be typed as "docker-compose"
-sudo docker-compose --file ./live-ec2-docker-compose.yaml --env-file ./.env pull
+sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env pull
 
 #start docker
     #-d for detached, i.e. current terminal not occupied by docker
@@ -323,7 +330,7 @@ sudo docker-compose --file ./live-ec2-docker-compose.yaml --env-file ./.env pull
         #not using this can show errors better
     #up SERVICE_NAME to run only that service
     #--no-deps to ignore "depends" from yaml
-sudo docker-compose --file ./live-ec2-docker-compose.yaml --env-file ./.env up
+sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env up
 
 #run first full backup after django migrations from gunicorn container
     #do cronjob for full backup less frequently, i.e. --type=full
