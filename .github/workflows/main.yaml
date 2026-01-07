@@ -60,7 +60,7 @@ jobs:
     #specify environment to choose from git > settings > environments
     #https://stackoverflow.com/questions/66521958/how-to-access-environment-secrets-from-a-github-workflow
     environment: dev
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-latest
     container:
       image: python:latest
     #postgres, redis
@@ -143,7 +143,7 @@ jobs:
       github.event_name == 'pull_request' &&
       (github.event.action == 'opened' || github.event.action == 'reopened')
     environment: dev
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-latest
     permissions:
       id-token: write   # This is required for requesting the AWS JWT
       contents: read    # This is required for actions/checkout
@@ -203,7 +203,7 @@ jobs:
       github.event_name == 'pull_request' &&
       (github.event.action == 'opened' || github.event.action == 'reopened')
     environment: dev
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-latest
     env:
       STAGE_OR_PROD: stage
       SECRET_KEY: abc123
@@ -270,7 +270,7 @@ jobs:
       github.event_name == 'pull_request' &&
       (github.event.action == 'closed' && github.event.pull_request.merged == true)
     environment: dev
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-latest
     env:
       STAGE_OR_PROD: prod
       SECRET_KEY: abc123

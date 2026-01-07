@@ -27,20 +27,20 @@ mkdir -p offline_repo/pkgs;
 
 #step 2b, download packages into repo without installing at host
 #docker+postgresql
-dnf download --resolve --alldeps --forcearch=aarch64 --destdir=offline_repo/pkgs \
+dnf download --resolve --alldeps --forcearch=x86_64 --destdir=offline_repo/pkgs \
     docker \
     postgresql17 \
     postgresql17-server;
 #pgbackrest dependencies
-dnf download --resolve --alldeps --forcearch=aarch64 --destdir=offline_repo/pkgs \
+dnf download --resolve --alldeps --forcearch=x86_64 --destdir=offline_repo/pkgs \
     postgresql-libs libssh2;
 #meson + ninja-build + build dependencies
-dnf download --resolve --alldeps --forcearch=aarch64 --destdir=offline_repo/pkgs \
+dnf download --resolve --alldeps --forcearch=x86_64 --destdir=offline_repo/pkgs \
     meson ninja-build \
     postgresql17-devel \
     gcc openssl-devel libxml2-devel lz4-devel libzstd-devel bzip2-devel libyaml-devel libssh2-devel;
-    #run "arch" command as-is, to check if your system is x86_64 or arm64
-    #--forcearch: arm64 tends to be cheaper on AWS (t4g), which is called "aarch64" here
+    #run "arch" command as-is, to check if your system is x86_64 or aarch64
+    #--forcearch: arm64 tends to be cheaper on AWS (t4g), which is called "aarch64"
     #if you get OpenSSL errors here, especially "decryption failed or bad record mac", turn airplane mode off/on and rerun command
     #ninja is "ninja-build" in AWS Linux 2023
 
@@ -60,8 +60,10 @@ wget -O pgbackrest.tar.gz https://github.com/pgbackrest/pgbackrest/archive/relea
     #for newer versions, you have meson.build, use meson+ninja to install
 
 #step 2e, download docker compose plugin
-    #open "https://github.com/docker/compose/releases" > scroll to "assets" > choose correct asset > copy link and paste here
-wget -O docker-compose https://github.com/docker/compose/releases/download/v5.0.1/docker-compose-linux-aarch64
+    #open "https://github.com/docker/compose/releases" > scroll to "assets" and click "view all"
+    #choose "docker-compose-linux-x86_64" or "docker-compose-linux-aarch64"
+wget -O docker-compose https://github.com/docker/compose/releases/download/v5.0.1/docker-compose-linux-x86_64
+# wget -O docker-compose https://github.com/docker/compose/releases/download/v5.0.1/docker-compose-linux-aarch64
 
 #step 3, export all .tar.gz and executables from within container to host machine
     #at host machine cmd
