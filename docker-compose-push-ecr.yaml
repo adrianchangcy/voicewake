@@ -9,10 +9,6 @@
 
 name: vw
 services:
-  postgres:
-    image: postgres:latest
-    platform: "linux/x86_64"
-
   #using own redis instead of AWS Elasticache to save cost
   #reliability from AWES Elasticache is not as important yet, due to low traffic and resilient cache handling logic
   redis:
