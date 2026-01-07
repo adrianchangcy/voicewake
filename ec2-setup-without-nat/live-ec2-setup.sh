@@ -5,7 +5,7 @@
     #copy from S3 to host, give it executable permission, ensure vars passed is correct, and run
         #sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/live-ec2-setup.sh ./live-ec2-setup.sh;
         #sudo chmod -x ./live-ec2-setup.sh;
-        #sudo STAGE_OR_PROD="stage" ./live-ec2-setup.sh;
+        #STAGE_OR_PROD="stage" sh ./live-ec2-setup.sh;
 #============================================
 
 #=========PREREQUISITES=========
