@@ -15,17 +15,19 @@
     #build container
         #docker-compose --env-file ./env/.env --file ./docker-compose-dev.yaml up -d  --build aws_linux
 
-#step 2a, inside container, preparing packages and folder
+#step 2a, inside container, prepare packages and folder
 dnf update -y;
 dnf install -y dnf-plugins-core;
-dnf install -y createrepo_c tar;
+dnf install -y createrepo_c tar gzip;
 dnf install -y wget;
-rm -f offline_repo;
+
+#step 2b, prepare offline repo folder
+rm -rf offline_repo;
     #remove any older versions of folder just for script resilience
 mkdir -p offline_repo/pkgs;
     #-p means create both parent folder and subfolder
 
-#step 2b, download packages into repo without installing at host
+#step 2c, download packages into repo without installing at host
 #docker+postgresql
 dnf download --resolve --alldeps --forcearch=x86_64 --destdir=offline_repo/pkgs \
     docker \
@@ -44,7 +46,7 @@ dnf download --resolve --alldeps --forcearch=x86_64 --destdir=offline_repo/pkgs 
     #if you get OpenSSL errors here, especially "decryption failed or bad record mac", turn airplane mode off/on and rerun command
     #ninja is "ninja-build" in AWS Linux 2023
 
-#step 2c, creating repo of our packages then compressing
+#step 2d, creating repo of our packages then compressing
 createrepo_c offline_repo/pkgs;
 tar -czvf offline_repo.tar.gz ./offline_repo/;
     #createrepo_c crucially generates repodata for package managers so they don't need internet, a.k.a. "air-gapped systems"
@@ -52,14 +54,14 @@ tar -czvf offline_repo.tar.gz ./offline_repo/;
 ls -lh offline_repo.tar.gz
     #list (ls) file in -l (long format) and -h (human-readable)
 
-#step 2d, download pgbackrest
+#step 2e, download pgbackrest
     #does not have separate x86_64 and aarch64 installation
 wget -O pgbackrest.tar.gz https://github.com/pgbackrest/pgbackrest/archive/release/2.57.0.tar.gz
     #-O (oh) is output directory
     #for older versions, you will have /.configure, use "make" to install
     #for newer versions, you have meson.build, use meson+ninja to install
 
-#step 2e, download docker compose plugin
+#step 2f, download docker compose plugin
     #open "https://github.com/docker/compose/releases" > scroll to "assets" and click "view all"
     #choose "docker-compose-linux-x86_64" or "docker-compose-linux-aarch64"
 wget -O docker-compose https://github.com/docker/compose/releases/download/v5.0.1/docker-compose-linux-x86_64
@@ -68,9 +70,9 @@ wget -O docker-compose https://github.com/docker/compose/releases/download/v5.0.
 #step 3, export all .tar.gz and executables from within container to host machine
     #at host machine cmd
         #docker ps
-        #docker cp vw_dev-aws_linux-1:offline_repo.tar.gz ./ec2-setup-without-nat/
-        #docker cp vw_dev-aws_linux-1:pgbackrest.tar.gz ./ec2-setup-without-nat/
-        #docker cp vw_dev-aws_linux-1:docker-compose ./ec2-setup-without-nat/
+        #docker cp vw_dev-aws_linux-1:offline_repo.tar.gz ./ec2-setup-without-nat/;
+        #docker cp vw_dev-aws_linux-1:pgbackrest.tar.gz ./ec2-setup-without-nat/;
+        #docker cp vw_dev-aws_linux-1:docker-compose ./ec2-setup-without-nat/;
 
 #step 4, manually upload to S3
     #at host machine > right-click the .tar.gz > reveal in file explorer > drag-and-drop into S3 bucket

@@ -1,6 +1,13 @@
 #!/bin/bash
     #run this file as bash
 
+#=========HOW TO EXECUTE THIS SCRIPT=========
+    #copy from S3 to host, give it executable permission, ensure vars passed is correct, and run
+        #sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/live-ec2-setup.sh ./live-ec2-setup.sh;
+        #sudo chmod -x ./live-ec2-setup.sh;
+        #sudo STAGE_OR_PROD="stage" ./live-ec2-setup.sh;
+#============================================
+
 #=========PREREQUISITES=========
 #1, prepare repo from online machine for offline installation
     #refer to ./local-create-offline-repo.sh
@@ -17,9 +24,10 @@
         #.dkr means Docker
 #===============================
 
-#edit this using "sudo vi ./stage.env"
-#leave empty for no accidental stage/prod crossover
-export STAGE_OR_PROD=
+if [[ "${STAGE_OR_PROD}" != "stage" && "${STAGE_OR_PROD}" != "prod" ]]; then
+    echo "STAGE_OR_PROD is not stage/prod.";
+    exit 1;
+fi;
 
 #ECS + RDS is easier by a ton to set up
     #no manual package management, auto env var management by specifying .env at S3, etc.
@@ -53,7 +61,7 @@ export AWS_S3_MAIN_BUCKET_NAME=$(awk -F '=' '$1 == "AWS_S3_MAIN_BUCKET_NAME" {pr
     #$1 == "ENV_VAR" is an expression, i.e. actual is_equal
 
 #make directory
-sudo mkdir -p /opt/offline_repo
+sudo mkdir -p /opt/offline_repo;
 
 #unpack into /opt, i.e. "optional", a conventional folder for storing software that is not part of core OS, to separate from /usr and /bin
     #for tar:
@@ -67,14 +75,14 @@ sudo tar -xzvf offline_repo.tar.gz -C /opt;
 #create local .repo and replace its content
     #replace instead of adding, so repeated commands still succeed
     #piping echo to "tee" is a solution to "cat > file_path << EOF" not working even with sudo
-sudo touch /etc/yum.repos.d/offline.repo
+sudo touch /etc/yum.repos.d/offline.repo;
 echo "
 [offline]
 name=Offline Repo
 baseurl=file:///opt/offline_repo/pkgs
 enabled=1
 gpgcheck=0
-" | sudo tee /etc/yum.repos.d/offline.repo
+" | sudo tee /etc/yum.repos.d/offline.repo;
 
 #preventative measure to allow installation to be successful
 #by removing any stale locks, which shows error "waiting for process pid xxxx to finish"
@@ -322,7 +330,7 @@ aws ecr get-login-password --region "${AWS_ECR_REGION_NAME}" \
     #remember to exclude .env inside .dockerfile build step, else it persists in container
     #containers also cannot access env vars at host machine
     #use --env-file to pass env vars in instead
-sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env pull
+sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env pull;
 
 #start docker
     #-d for detached, i.e. current terminal not occupied by docker
@@ -330,7 +338,7 @@ sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env pull
         #not using this can show errors better
     #up SERVICE_NAME to run only that service
     #--no-deps to ignore "depends" from yaml
-sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env up
+sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env up;
 
 #run first full backup after django migrations from gunicorn container
     #do cronjob for full backup less frequently, i.e. --type=full
