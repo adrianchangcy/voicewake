@@ -5,42 +5,44 @@
 #since we only build these images then deploy to ECR and never run them in Github Actions, a lot of runtime args are unnecessary
 #also don't need .env, since env vars are injected only at start of runtime
 
+#using arm64 at EC2, also labelled as aarch64
+
 name: vw
 services:
   postgres:
     image: postgres:latest
-    platform: "linux/amd64"
+    platform: "linux/arm64"
 
   #using own redis instead of AWS Elasticache to save cost
   #reliability from AWES Elasticache is not as important yet, due to low traffic and resilient cache handling logic
   redis:
     image: redis:latest
-    platform: "linux/amd64"
+    platform: "linux/arm64"
 
   django_gunicorn:
     build:
       #. because it relies on files like manage.py
       context: .
       dockerfile: ./voicewake/docker/service-gunicorn.dockerfile
-    platform: "linux/amd64"
+    platform: "linux/arm64"
 
   django_celery_worker:
     build:
       #. because it relies on files like manage.py
       context: .
       dockerfile: ./voicewake/docker/service-celery-worker.dockerfile
-    platform: "linux/amd64"
+    platform: "linux/arm64"
 
   django_celery_beat:
     build:
       #. because it relies on files like manage.py
       context: .
       dockerfile: ./voicewake/docker/service-celery-beat.dockerfile
-    platform: "linux/amd64"
+    platform: "linux/arm64"
 
   #besides throttling, nginx will serve /static/, not Gunicorn
   nginx:
     build:
       context: .
       dockerfile: ./nginx/Dockerfile
-    platform: "linux/amd64"
+    platform: "linux/arm64"

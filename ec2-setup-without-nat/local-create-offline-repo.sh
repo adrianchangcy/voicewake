@@ -16,12 +16,13 @@
         #docker-compose --env-file ./env/.env --file ./docker-compose-dev.yaml up -d  --build aws_linux
 
 #step 2a, inside container, preparing packages and folder
-dnf update -y
-dnf install -y dnf-plugins-core
-dnf install -y createrepo_c tar
-rm -f offline_repo
+dnf update -y;
+dnf install -y dnf-plugins-core;
+dnf install -y createrepo_c tar;
+dnf install -y wget;
+rm -f offline_repo;
     #remove any older versions of folder just for script resilience
-mkdir -p offline_repo/pkgs
+mkdir -p offline_repo/pkgs;
     #-p means create both parent folder and subfolder
 
 #step 2b, download packages into repo without installing at host
@@ -52,17 +53,22 @@ ls -lh offline_repo.tar.gz
     #list (ls) file in -l (long format) and -h (human-readable)
 
 #step 2d, download pgbackrest
-dnf install -y wget
+    #does not have separate x86_64 and aarch64 installation
 wget -O pgbackrest.tar.gz https://github.com/pgbackrest/pgbackrest/archive/release/2.57.0.tar.gz
     #-O (oh) is output directory
     #for older versions, you will have /.configure, use "make" to install
     #for newer versions, you have meson.build, use meson+ninja to install
 
-#step 3, export all .tar.gz from within container to host machine
+#step 2e, download docker compose plugin
+    #open "https://github.com/docker/compose/releases" > scroll to "assets" > choose correct asset > copy link and paste here
+wget -O docker-compose https://github.com/docker/compose/releases/download/v5.0.1/docker-compose-linux-aarch64
+
+#step 3, export all .tar.gz and executables from within container to host machine
     #at host machine cmd
         #docker ps
         #docker cp vw_dev-aws_linux-1:offline_repo.tar.gz ./ec2-setup-without-nat/
         #docker cp vw_dev-aws_linux-1:pgbackrest.tar.gz ./ec2-setup-without-nat/
+        #docker cp vw_dev-aws_linux-1:docker-compose ./ec2-setup-without-nat/
 
 #step 4, manually upload to S3
     #at host machine > right-click the .tar.gz > reveal in file explorer > drag-and-drop into S3 bucket
