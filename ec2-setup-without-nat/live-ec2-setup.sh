@@ -211,7 +211,7 @@ sudo systemctl status postgres;
 #==================================
 
 #install pgbackrest
-mkdir -p /build && \
+sudo mkdir -p /build && \
 sudo tar -xzvf pgbackrest.tar.gz -C /build && \
 sudo meson setup /build/pgbackrest /build/pgbackrest-release-2.57.0 && \
 sudo ninja -C /build/pgbackrest && \
@@ -260,7 +260,7 @@ sudo chown postgres:postgres /tmp/pgbackrest;
         #[main]/[global]: any name you choose for commands to reference later
         #repo1-retention-full: expires older full backups so only latest x amount can exist
         #repo1-retention-diff: expires older diff backups so only latest x amount can exist
-        #start-fast: on postgresql start, start immediately while ignoring checkpoint_timeout and checkpoint_segments in postgresql.conf
+        #start-fast: tells pgsql to start backup immediately without waiting for next checkpoint
 echo "
 [${CURRENT_ENV}]
 pg1-path=/var/lib/pgsql/data
@@ -343,8 +343,8 @@ sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env up -
 #run first full backup after django migrations from gunicorn container
     #do cronjob for full backup less frequently, i.e. --type=full
     #do cronjob for partial backup more frequently, i.e. --type=incr
-sudo -u postgres pgbackrest --stanza=main backup --type=full;
-sudo -u postgres pgbackrest --stanza=main backup --type=incr;
+sudo -u postgres pgbackrest --stanza=${CURRENT_ENV} backup --type=full;
+sudo -u postgres pgbackrest --stanza=${CURRENT_ENV} backup --type=incr;
 
 #make sure postgresql listens to port meant for host machine in default docker0 interface
     #docker0 is default Docker interface created
@@ -381,7 +381,7 @@ echo "
 Description=Runs pgbackrest with full backup
 Wants=db-backup-full.timer
 [Service]
-ExecStart=sudo -u postgres pgbackrest --stanza=main backup --type=full
+ExecStart=sudo -u postgres pgbackrest --stanza=${CURRENT_ENV} backup --type=full
 WorkingDirectory=~
 Slice=db-backup-full.slice
 [Install]
@@ -418,7 +418,7 @@ echo "
 Description=Runs pgbackrest with incr backup
 Wants=db-backup-incr.timer
 [Service]
-ExecStart=sudo -u postgres pgbackrest --stanza=main backup --type=incr
+ExecStart=sudo -u postgres pgbackrest --stanza=${CURRENT_ENV} backup --type=incr
 WorkingDirectory=~
 Slice=db-backup-incr.slice
 [Install]
@@ -450,7 +450,6 @@ MemoryLimit=200M
 
 #restart systemd
     #does not restart other main services like docker, unless systemd detects related changes
-    #with start-fast:y at pgbackrest.conf, these will run immediately, so only need to run here once after Django migrations
 sudo systemctl stop db-backup-full db-backup-incr;
 sudo systemctl daemon-reload;
 sudo systemctl enable db-backup-full.timer db-backup-incr.timer;
