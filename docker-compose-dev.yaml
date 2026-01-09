@@ -196,6 +196,7 @@ services:
     networks:
       - backend
 
+  #remember to run the command at Dockerfile to have SSL files ready
   nginx:
     build:
       context: .
@@ -216,6 +217,12 @@ services:
       - type: bind
         source: ./nginx/default.conf.template
         target: /etc/nginx/templates/default.conf.template
+      - type: bind
+        source: ./nginx/dev-nginx-ssl.crt
+        target: /etc/nginx/dev-nginx-ssl.crt
+      - type: bind
+        source: ./nginx/dev-nginx-ssl.key
+        target: /etc/nginx/dev-nginx-ssl.key
     depends_on:
       django_runserver:
         condition: service_healthy
@@ -247,6 +254,9 @@ services:
       - type: bind
         source: ./frontend
         target: /frontend
+      - type: bind
+        source: ./nginx
+        target: /nginx
       # - type: bind
       #   source: ./voicewake
       #   target: /voicewake

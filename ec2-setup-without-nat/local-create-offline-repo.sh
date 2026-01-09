@@ -17,9 +17,11 @@
 
 #step 2a, inside container, prepare packages and folder
 dnf update -y;
-dnf install -y dnf-plugins-core;
-dnf install -y createrepo_c tar gzip;
-dnf install -y wget;
+dnf install -y \
+    dnf-plugins-core \
+    createrepo_c tar gzip \
+    wget \
+    openssl;
 
 #step 2b, prepare offline repo folder
 rm -rf offline_repo;
@@ -68,7 +70,7 @@ wget -O docker-compose https://github.com/docker/compose/releases/download/v5.0.
 # wget -O docker-compose https://github.com/docker/compose/releases/download/v5.0.1/docker-compose-linux-aarch64
 
 #step 3, export all .tar.gz and executables from within container to host machine
-    #at host machine cmd
+    #at host machine cmd (to copy all commands, Ctrl+Alt+Down at start, Shift+Right)
         #docker ps
         #docker cp vw_dev-aws_linux-1:offline_repo.tar.gz ./ec2-setup-without-nat/;
         #docker cp vw_dev-aws_linux-1:pgbackrest.tar.gz ./ec2-setup-without-nat/;

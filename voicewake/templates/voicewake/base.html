@@ -160,8 +160,11 @@
                     #use str.split() to get only host at templat here
             solution
                 forward host in header at NGINX so we can do 192.168.1.200:5173 instead of upstreamname:5173
+
+            FYI
+                #values in base.html such as VITE_PORT are loaded in via context_processors.py
         -->
-        <script type="module" crossorigin src="http://{{HOST}}:{{VITE_PORT}}/src/main.ts"></script>
+        <script type="module" crossorigin src="https://{{HOST}}:{{VITE_PORT}}/src/main.ts"></script>
     {% else %}
         <script type="module" crossorigin src="{% static 'frontend/js/main.js' %}{{STATIC_CACHE_BUST_URL_APPEND}}"></script>
     {% endif %}

@@ -9,7 +9,20 @@
   #manually define this so you have version control:
   # AWS_ECR_EC2_IMAGE_TAG: ${{ github.event.pull_request.number }}
 
-#we are doing "docker pull" from ECR for built images, hence no .dockerfile
+#important usage of ports
+  #if ALB to monitor requests -> ECS + separate EC2 per container, then for each container, bind host port to container port
+    #some_service:
+      #ports:
+        #- "host_port:container_port"
+  #if 1 public exposed EC2 for all containers -> nginx+SSL inside, only let nginx bind to port, and use EXPOSE for other containers
+    #EXPOSE only specifies port to use in shared docker internal network
+    #not binding to host port means no exposed area for attacks
+    #nginx:
+      #ports:
+        #- "443:8080"
+    #other_service:
+      #expose:
+        #- "5432"
 
 name: vw
 services:
@@ -21,8 +34,8 @@ services:
   #reliability from AWES Elasticache is not as important yet, due to low traffic and implementation at code on Redis downtime
   redis:
     image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${AWS_ECR_DOCKER_COMPOSE_NAME}/redis:${AWS_ECR_EC2_IMAGE_TAG}"
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     env_file:
       #provide absolute path to .env, since docker is executed at different location
       - /home/ec2-user/.env
@@ -47,9 +60,8 @@ services:
 
   django_gunicorn:
     image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${AWS_ECR_DOCKER_COMPOSE_NAME}/django_gunicorn:${AWS_ECR_EC2_IMAGE_TAG}"
-    ports:
-      #map port on host to port on container
-      - "5000:5000"
+    expose:
+      - "5000"
     env_file:
       #provide absolute path to .env, since docker is executed at different location
       - /home/ec2-user/.env
@@ -82,9 +94,8 @@ services:
 
   django_celery_worker:
     image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${AWS_ECR_DOCKER_COMPOSE_NAME}/django_celery_worker:${AWS_ECR_EC2_IMAGE_TAG}"
-    ports:
-      #this can be anything, since communication with django is using redis as broker via settings.CELERY_BROKER_URL
-      - "8001:8001"
+    expose:
+      - "8001"
     env_file:
       #provide absolute path to .env, since docker is executed at different location
       - /home/ec2-user/.env
@@ -114,9 +125,8 @@ services:
 
   django_celery_beat:
     image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${AWS_ECR_DOCKER_COMPOSE_NAME}/django_celery_beat:${AWS_ECR_EC2_IMAGE_TAG}"
-    ports:
-      #this can be anything, since communication with django is using redis as broker via settings.CELERY_BROKER_URL
-      - "8002:8002"
+    expose:
+      - "8002"
     env_file:
       #provide absolute path to .env, since docker is executed at different location
       - /home/ec2-user/.env
@@ -151,10 +161,18 @@ services:
     #expecting env vars at runtime: DJANGO_SERVICE_NAME, DJANGO_PORT, FAVICON_URL
     image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${AWS_ECR_DOCKER_COMPOSE_NAME}/nginx:${AWS_ECR_EC2_IMAGE_TAG}"
     ports:
-      - "8080:8080"
+      #DNS can only resolve 80 and 443 requests
+      - "443:8080"
     env_file:
       #provide absolute path to .env, since docker is executed at different location
       - /home/ec2-user/.env
+    volumes:
+      - type: bind
+        source: ./cloudflare-to-public-ec2-nginx-ssl.crt
+        target: /etc/nginx/cloudflare-to-public-ec2-nginx-ssl.crt
+      - type: bind
+        source: ./cloudflare-to-public-ec2-nginx-ssl.key
+        target: /etc/nginx/cloudflare-to-public-ec2-nginx-ssl.key
     depends_on:
       django_gunicorn:
         condition: service_healthy

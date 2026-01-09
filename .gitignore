@@ -148,6 +148,10 @@ GitHub.sublime-settings
 !.vscode/extensions.json 
 .history
 
+#SSL
+*.crt
+*.key
+
 #/ec2-setup-without-nat
 !/ec2-setup-without-nat/live-ec2-docker-compose.yaml
 !/ec2-setup-without-nat/live-ec2-setup.sh
