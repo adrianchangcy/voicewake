@@ -42,6 +42,8 @@ sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/live-ec2-docker-compo
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/offline_repo.tar.gz ./offline_repo.tar.gz;
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/pgbackrest.tar.gz ./pgbackrest.tar.gz;
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/docker-compose /usr/libexec/docker/cli-plugins/docker-compose;
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/cloudflare-to-public-ec2-nginx-ssl.crt ./cloudflare-to-public-ec2-nginx-ssl.crt;
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/cloudflare-to-public-ec2-nginx-ssl.key ./cloudflare-to-public-ec2-nginx-ssl.key;
 
 #add docker-compose as docker plugin (officially recommended)
     #you will be using it via "docker compose", not "docker-compose" anymore

@@ -96,6 +96,16 @@ export default defineConfig({
             //https://vuejs.org/api/compile-time-flags#vite
         // tailwindcss(),
     ],
+    server: {
+        host: true,
+        //these are from /nginx/Dockerfile creating SSL via openSSL and exporting to /nginx
+        //cannot use mkcert() from vite-plugins-mkcert, since it only accounts for direct visit, and not nginx->server->vite
+        https: {
+            cert: '/nginx/dev-nginx-ssl.crt',
+            key: '/nginx/dev-nginx-ssl.key',
+        },
+        cors: '127.0.0.1',
+    },
     build: {
         rollupOptions: {
             input: {

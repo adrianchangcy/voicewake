@@ -152,9 +152,8 @@ AWS_LAMBDA_NORMALISE_FUNCTION_NAME = ''.join(os.environ['AWS_LAMBDA_NORMALISE_FU
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
-    'http://127.0.0.1:8000',
-    'http://127.0.0.1:8080',
-    'http://192.168.1.200:8080',
+    'http://127.0.0.1',
+    f'https://{ os.environ['NGINX_DEV_MACHINE_STATIC_LAN_IP'] }',
     'https://voicewake.com',
     'https://stage.voicewake.com',
     'https://' + AWS_S3_CUSTOM_DOMAIN,
@@ -162,9 +161,10 @@ CORS_ALLOWED_ORIGINS = [
 
 
 CSRF_TRUSTED_ORIGINS = [
-    'http://127.0.0.1:8000',
-    'http://127.0.0.1:8080',
-    'http://192.168.1.200:8080',
+    'http://127.0.0.1',
+    #specify ":xxxx" to match whichever port NGINX is listening to
+    #using HTTPS also prevents you from using HTTP, but it's worth it, because NGINX is now more integrated in dev workflow
+    f'https://{ os.environ['NGINX_DEV_MACHINE_STATIC_LAN_IP'] }:8080',
     'https://voicewake.com',
     'https://stage.voicewake.com',
 ]
