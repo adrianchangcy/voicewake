@@ -98,12 +98,14 @@ export default defineConfig({
     ],
     server: {
         host: true,
-        //these are from /nginx/Dockerfile creating SSL via openSSL and exporting to /nginx
+        //these are from /nginx/Dockerfile creating SSL via openSSL and exporting to /nginx, with bind mount to /nginx
         //cannot use mkcert() from vite-plugins-mkcert, since it only accounts for direct visit, and not nginx->server->vite
         https: {
             cert: '/nginx/dev-nginx-ssl.crt',
             key: '/nginx/dev-nginx-ssl.key',
         },
+        //needed this for nginx <-> django + URL to vue dev
+        //https://vite.dev/config/server-options#server-cors
         cors: '127.0.0.1',
     },
     build: {
