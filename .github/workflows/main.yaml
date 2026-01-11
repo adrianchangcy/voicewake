@@ -207,7 +207,6 @@ jobs:
       STAGE_OR_PROD: stage
       SECRET_KEY: abc123
       ALLOWED_HOSTS: "*"
-      NGINX_DEV_MACHINE_STATIC_LAN_IP: ''
       DB_HOST: postgres
       DB_NAME: voicewake
       DB_USER: postgres
@@ -275,7 +274,6 @@ jobs:
       STAGE_OR_PROD: prod
       SECRET_KEY: abc123
       ALLOWED_HOSTS: "*"
-      NGINX_DEV_MACHINE_STATIC_LAN_IP: ''
       DB_HOST: postgres
       DB_NAME: voicewake
       DB_USER: postgres
