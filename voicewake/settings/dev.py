@@ -6,6 +6,18 @@ DEBUG = True
 DEBUG_PROPAGATE_EXCEPTIONS = True   #shows detailed exceptions instead of simple 500
 
 
+CORS_ALLOWED_ORIGINS += [
+    f'https://{ os.environ['NGINX_DEV_MACHINE_STATIC_LAN_IP'] }',
+]
+
+
+CSRF_TRUSTED_ORIGINS += [
+    #specify ":xxxx" to match whichever port NGINX is listening to
+    #using HTTPS also prevents you from using HTTP, but it's worth it, because NGINX is now more integrated in dev workflow
+    f'https://{ os.environ['NGINX_DEV_MACHINE_STATIC_LAN_IP'] }:8080',
+]
+
+
 #during tests, also use 'default' db
 #by specifying ['TEST']['MIRROR'] to 'default', test queries to db will be redirected to real db
     #this also means that other types of test cases, like TransactionTestCase, that should roll back, will not roll back
