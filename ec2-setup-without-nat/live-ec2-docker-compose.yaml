@@ -168,11 +168,11 @@ services:
       - /home/ec2-user/.env
     volumes:
       - type: bind
-        source: ./cloudflare-to-public-ec2-nginx-ssl.crt
-        target: /etc/nginx/cloudflare-to-public-ec2-nginx-ssl.crt
+        source: ./${NGINX_SSL_FILE_NAME}.crt
+        target: /etc/nginx/${NGINX_SSL_FILE_NAME}.crt
       - type: bind
-        source: ./cloudflare-to-public-ec2-nginx-ssl.key
-        target: /etc/nginx/cloudflare-to-public-ec2-nginx-ssl.key
+        source: ./${NGINX_SSL_FILE_NAME}.key
+        target: /etc/nginx/${NGINX_SSL_FILE_NAME}.key
     depends_on:
       django_gunicorn:
         condition: service_healthy

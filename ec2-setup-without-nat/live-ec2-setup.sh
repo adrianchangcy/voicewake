@@ -324,7 +324,8 @@ sudo systemctl start docker;
     #env vars only persist at current terminal session, so only for current Instance Connect
     #one-liner makes it easy to manually copy & paste
     #docker login must be performed with sudo, otherwise it will only warn "authentication token expired"
-export AWS_ECR_REGION_NAME=us-east-1 && export AWS_ECR_ACCOUNT_ID=981060373951;
+export AWS_ECR_REGION_NAME=$(awk -F '=' '$1 == "AWS_ECR_REGION_NAME" {print $2}' .env);
+export AWS_ECR_ACCOUNT_ID=$(awk -F '=' '$1 == "AWS_ECR_ACCOUNT_ID" {print $2}' .env);
 aws ecr get-login-password --region "${AWS_ECR_REGION_NAME}" \
     | sudo docker login -u AWS --password-stdin "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com";
 
