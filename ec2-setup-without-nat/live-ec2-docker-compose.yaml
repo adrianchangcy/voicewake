@@ -122,6 +122,9 @@ services:
         max-file: "2"
     networks:
       - backend
+    extra_hosts:
+      #needs connection to db
+      - "myhost:172.17.0.1"
 
   django_celery_beat:
     image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${AWS_ECR_DOCKER_COMPOSE_NAME}/django_celery_beat:${AWS_ECR_EC2_IMAGE_TAG}"
