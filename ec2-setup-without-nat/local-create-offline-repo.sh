@@ -1,3 +1,8 @@
+#!/bin/bash
+
+#stop entire script on exit status 1 from any command (error)
+set -e
+
 #step 1, prepare container
     #local machine with internet, run container by pulling from amazonlinux:latest, install packages there
         #at /docker-compose-dev.yaml
@@ -14,6 +19,15 @@
                     #     target: /local-create-offline-repo.sh
     #build container
         #docker-compose --env-file ./env/.env --file ./docker-compose-dev.yaml up -d  --build aws_linux
+
+
+
+#=========HOW TO EXECUTE THIS SCRIPT=========
+    #sudo chmod -x ./local-create-offline-repo.sh;
+    #sh ./local-create-offline-repo.sh;
+#============================================
+
+
 
 #step 2a, inside container, prepare packages and folder
 dnf update -y;
@@ -47,6 +61,8 @@ dnf download --resolve --alldeps --forcearch=x86_64 --destdir=offline_repo/pkgs 
     #--forcearch: arm64 tends to be cheaper on AWS (t4g), which is called "aarch64"
     #if you get OpenSSL errors here, especially "decryption failed or bad record mac", turn airplane mode off/on and rerun command
     #ninja is "ninja-build" in AWS Linux 2023
+    #installation guides depending on OS
+        #https://pgbackrest.org/user-guide-index.html
 
 #step 2d, creating repo of our packages then compressing
 createrepo_c offline_repo/pkgs;

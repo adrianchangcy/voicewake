@@ -65,9 +65,9 @@ FROM nginx:bookworm AS final-stage
 #name our files as "default" to replace files with "default" name, and prevent conflict from "*.conf" wildcard
 #create /etc/nginx/templates/default.conf.template, throw everything in there
 #create /etc/nginx/nginx.conf, put root-level configs in there
-#let NGINX do envsubst to templates, which in this case, NGINX will create /etc/nginx/conf.d/default.conf
+#NGINX entrypoint will do envsubst with /etc/nginx/templates/default.conf.template to create /etc/nginx/conf.d/default.conf
 #do "include /etc/nginx/conf.d/*.conf;" at /etc/nginx/nginx.conf
-#don't include entrypoint.sh nor CMD, so NGINX uses its own default command, which will also do envsubst
+#don't include entrypoint.sh nor CMD, since NGINX's own entrypoint is quite complex, or you can find it at github and modify it
 COPY ./nginx/default.conf.template /etc/nginx/templates/
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/50x.html /etc/nginx/html/
@@ -83,3 +83,7 @@ EXPOSE 8080
 
 #on file change, manually reload at container's exec bash (no straightforward hot reload available):
     #nginx -s reload
+
+#to tail logs, enter nginx container and use "tail":
+    #sudo docker exec -it vw-nginx-1 bash
+    #sudo tail -f /var/log/nginx/*.log
