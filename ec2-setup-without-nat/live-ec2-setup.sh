@@ -1,6 +1,9 @@
 #!/bin/bash
     #run this file as bash
 
+#stop entire script on exit status 1 from any command (error)
+set -e
+
 #=========HOW TO EXECUTE THIS SCRIPT=========
     #copy from S3 to host, give it executable permission, ensure vars passed is correct, and run
         #sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/live-ec2-setup.sh ./live-ec2-setup.sh;
@@ -94,7 +97,8 @@ gpgcheck=0
     #ps -p $(cat /var/run/dnf.pid)
 
 #fix (using semicolon so you can copy and run entire block, as && exits on first failure)
-sudo killall dnf rpm;
+sudo killall dnf rpm || true;
+    #allow this to fail with "no process found"
 sudo rm -f /var/run/dnf.pid;
 sudo rm -f /var/cache/dnf/*lock*;
 sudo rm -f /var/lib/rpm/.rpm.lock;
@@ -118,9 +122,9 @@ sudo dnf --disablerepo="*" --enablerepo="offline" install \
 sudo dnf --disablerepo="*" --enablerepo="offline" install \
     meson ninja-build \
     postgresql17-devel \
-    postgresql-libs libssh2 \
     gcc openssl-devel libxml2-devel lz4-devel libzstd-devel bzip2-devel libyaml-devel libssh2-devel \
-    -y -v;
+    -y -v --allowerasing;
+    #--allowerasing: public EC2 has some packages pre-installed compared to private EC2, this option resolves package conflicts
 
 #================================
 #========POSTGRESQL SETUP========
@@ -268,7 +272,7 @@ echo "
 pg1-path=/var/lib/pgsql/data
 [global]
 repo1-type=s3
-repo1-path=/pgbackrest_output
+repo1-path=/${CURRENT_ENV}_pgbackrest_output
 repo1-s3-bucket=${AWS_S3_MAIN_BUCKET_NAME}
 repo1-s3-endpoint=s3.amazonaws.com
 repo1-s3-region=${AWS_S3_REGION_NAME}
