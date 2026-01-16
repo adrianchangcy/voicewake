@@ -40,7 +40,6 @@ fi;
     #if you get hanging network here, do Ctrl+C and rerun with "--debug" flag for potential clues
     #it took a few minutes for the correct network settings, to go successful "aws s3 ls" and failing "aws s3 cp", to fully successful
     #easier to do singular .env for entire machine
-sudo aws s3 cp "s3://voicewake-bucket/${STAGE_OR_PROD}.env" "./.env";
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/ec2-docker-compose.yaml ./ec2-docker-compose.yaml;
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/offline_repo.tar.gz ./offline_repo.tar.gz;
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/pgbackrest.tar.gz ./pgbackrest.tar.gz;
@@ -52,19 +51,6 @@ sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/public-ec2-nginx-ssl.
 #add docker-compose as docker plugin (officially recommended)
     #you will be using it via "docker compose", not "docker-compose" anymore
 sudo chmod +x /usr/libexec/docker/cli-plugins/docker-compose;
-
-#prepare env vars to automate the rest of the script
-export CURRENT_ENV=$(awk -F '=' '$1 == "CURRENT_ENV" {print $2}' .env);
-export DB_NAME=$(awk -F '=' '$1 == "DB_NAME" {print $2}' .env);
-export DB_PASSWORD=$(awk -F '=' '$1 == "DB_PASSWORD" {print $2}' .env);
-export AWS_S3_ACCESS_KEY_ID=$(awk -F '=' '$1 == "AWS_S3_ACCESS_KEY_ID" {print $2}' .env);
-export AWS_S3_SECRET_ACCESS_KEY=$(awk -F '=' '$1 == "AWS_S3_SECRET_ACCESS_KEY" {print $2}' .env);
-export AWS_S3_REGION_NAME=$(awk -F '=' '$1 == "AWS_S3_REGION_NAME" {print $2}' .env);
-export AWS_S3_MAIN_BUCKET_NAME=$(awk -F '=' '$1 == "AWS_S3_MAIN_BUCKET_NAME" {print $2}' .env);
-    #$() is command substitution, i.e. run command then output back using print
-    #-F '=' means to use '=' as separator for "value after ="
-        #seems to respect nextline
-    #$1 == "ENV_VAR" is an expression, i.e. actual is_equal
 
 #make directory
 sudo mkdir -p /opt/offline_repo;
@@ -126,6 +112,35 @@ sudo dnf --disablerepo="*" --enablerepo="offline" install \
     meson ninja-build \
     postgresql17-devel gcc kernel-headers openssl-devel libxml2-devel lz4-devel libzstd-devel bzip2-devel libyaml-devel libssh2-devel \
     -y -v;
+sudo dnf --disablerepo="*" --enablerepo="offline" install \
+    dos2unix \
+    -y -v;
+
+#===========================
+#=========ENV SETUP=========
+#===========================
+
+#must always run dos2unix to guarantee Windows-edited files won't have hidden newlines in linux when running "awk"
+    #you can verify this by checking string length of env var: echo ${#MY_VAR}
+sudo aws s3 cp "s3://voicewake-bucket/${STAGE_OR_PROD}.env" "./.env";
+sudo dos2unix .env;
+
+#prepare env vars to automate the rest of the script
+export CURRENT_ENV=$(awk -F '=' '$1 == "CURRENT_ENV" {print $2}' .env);
+export DB_NAME=$(awk -F '=' '$1 == "DB_NAME" {print $2}' .env);
+export DB_PASSWORD=$(awk -F '=' '$1 == "DB_PASSWORD" {print $2}' .env);
+export AWS_S3_ACCESS_KEY_ID=$(awk -F '=' '$1 == "AWS_S3_ACCESS_KEY_ID" {print $2}' .env);
+export AWS_S3_SECRET_ACCESS_KEY=$(awk -F '=' '$1 == "AWS_S3_SECRET_ACCESS_KEY" {print $2}' .env);
+export AWS_S3_REGION_NAME=$(awk -F '=' '$1 == "AWS_S3_REGION_NAME" {print $2}' .env);
+export AWS_S3_MAIN_BUCKET_NAME=$(awk -F '=' '$1 == "AWS_S3_MAIN_BUCKET_NAME" {print $2}' .env);
+    #$() is command substitution, i.e. run command then output back using print
+    #-F '=' means to use '=' as separator for "value after ="
+        #seems to respect nextline
+    #$1 == "ENV_VAR" is an expression, i.e. actual is_equal
+
+#=========================
+#=========ENV END=========
+#=========================
 
 
 
@@ -402,7 +417,10 @@ sudo docker compose --file ./ec2-docker-compose.yaml --env-file ./.env pull;
         #not using this can show errors better
     #up SERVICE_NAME to run only that service
     #--no-deps to ignore "depends" from yaml
-sudo docker compose --file ./ec2-docker-compose.yaml --env-file ./.env up -d;
+    #--force-recreate to ensure latest changes at compose or .env are picked up
+    #to shut down containers:
+        #sudo docker compose --file ./ec2-docker-compose.yaml --env-file ./.env down;
+sudo docker compose --file ./ec2-docker-compose.yaml --env-file ./.env up --force-recreate -d;
 
 #run first full backup after django migrations from gunicorn container
     #do cronjob for full backup less frequently, i.e. --type=full
