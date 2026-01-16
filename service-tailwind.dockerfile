@@ -1,15 +1,15 @@
-FROM node:current-alpine
+FROM node:alpine
 
-WORKDIR .
+WORKDIR /usr/app
 
-COPY ./package.json ./
-COPY ./yarn.lock ./
+COPY ./static ./static
+COPY ./voicewake ./voicewake
+COPY ./frontend ./frontend
+COPY ./tailwind.config.js ./tailwind.config.js
 
-COPY . .
-
-RUN npm install --verbose
-
-EXPOSE 3000
+RUN npm cache clean --force
+RUN npm install tailwindcss
+RUN npm install @tailwindcss/cli
 
 #behaviours
     #"start" at package.json is always run by Docker
@@ -34,4 +34,4 @@ EXPOSE 3000
         #saw a comment saying that file system events don't work when Docker is running in Hyper-V
             #if you have server script, also use polling, e.g. "nodemon -L server.js"
 
-CMD ["npx", "@tailwindcss/cli", "-i", "./static/voicewake/css/base.css", "-o", "./static/voicewake/css/output.css", "--watch", "--poll"]
+CMD ["sh", "-c", "npx @tailwindcss/cli -i ./static/voicewake/css/base.css -o ./static/voicewake/css/output.css --watch --poll"]

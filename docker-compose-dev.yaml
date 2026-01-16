@@ -284,24 +284,22 @@ services:
       context: .
       dockerfile: ./service-tailwind.dockerfile
     platform: "linux/amd64"
-    ports:
-      - "3000:3000"
     #we use bind mount between host files and container files for two-way sync
     volumes:
       - type: bind
         source: ./static
-        target: /static
+        target: /usr/app/static
       - type: bind
         source: ./voicewake
-        target: /voicewake
+        target: /usr/app/voicewake
       - type: bind
         source: ./frontend
-        target: /frontend
+        target: /usr/app/frontend
       - type: bind
         source: ./tailwind.config.js
-        target: /tailwind.config.js
+        target: /usr/app/tailwind.config.js
       #in container, specify the folder we want to ignore from bind-mount
-      - /frontend/node_modules
+      - /usr/app/node_modules
     restart: unless-stopped
 
   #empty container to update packages, and allows for testing of installation itself
@@ -317,18 +315,6 @@ services:
       context: .
       dockerfile: ./service-update-pip.dockerfile
     #no volume binding, only copy files directly to host machine once satisfied
-
-  #empty container to download and compile packages for air-gapped AWS Linux 2023
-  aws_linux:
-    image: amazonlinux:latest
-    tty: true
-    platform: "linux/amd64"
-    ports:
-      - "6677:6677"
-    volumes:
-      - type: bind
-        source: ./ec2-setup-without-nat/local-create-offline-repo.sh
-        target: /local-create-offline-repo.sh
 
 volumes:
   static:

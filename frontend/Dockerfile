@@ -5,7 +5,7 @@ EXPOSE ${VITE_PORT}
 
 WORKDIR .
 
-# #build context is at root
+#build context is at root
 COPY ./frontend ./
 COPY ./voicewake ./
 
@@ -22,9 +22,9 @@ RUN npm cache verify
 RUN npm install --verbose
 RUN npm install -g vite
 
-
-# #file change at host is detected by Vite in container, so no further flags needed
+#file change at host is detected by Vite in container, so no further flags needed
 #must use "sh" "-c", otherwise, if not sh, $var is interpreted as literal string instead of environment variable
+#can't pass custom arg --lan_ip=$NGINX_DEV_MACHINE_STATIC_LAN_IP successfully here, so just manually inserting at vite.config.js
 CMD ["sh", "-c", "npm run dev -- --host 0.0.0.0 --port $VITE_PORT"]
 
 #yarn, problem #1:

@@ -12,6 +12,8 @@ FROM alpine:latest AS create-ssl-stage
 
 RUN apk update && apk add openssl
 
+#only for dev
+#for live + cloudflare, get from cloudflare > SSL/TLS > origin server > create certificate > create your own .crt .key and paste in > paste files to S3
 RUN openssl req -newkey rsa:4096 \
     -x509 \
     -sha256 \
@@ -20,14 +22,6 @@ RUN openssl req -newkey rsa:4096 \
     -out "dev-nginx-ssl.crt" \
     -keyout "dev-nginx-ssl.key" \
     -subj "/C=MY/ST=Sarawak/L=Kuching/O=Security/OU=ITDepartment/CN=${NGINX_DEV_MACHINE_STATIC_LAN_IP}"
-RUN openssl req -newkey rsa:4096 \
-    -x509 \
-    -sha256 \
-    -days 3650 \
-    -nodes \
-    -out public-ec2-nginx-ssl.crt \
-    -keyout public-ec2-nginx-ssl.key \
-    -subj "/C=MY/ST=Sarawak/L=Kuching/O=Security/OU=ITDepartment/CN=*.voicewake.com"
     #-newkey, rsa2048 is recommended to be ok until the year 2030, and should upgrade
     #-x509, is type of cert
     #-days, can use any positive integer, 36500 is 10 years
@@ -49,8 +43,6 @@ FROM scratch AS export-ssl-stage
 
 COPY --from=create-ssl-stage /dev-nginx-ssl.crt ./nginx/
 COPY --from=create-ssl-stage /dev-nginx-ssl.key ./nginx/
-COPY --from=create-ssl-stage /public-ec2-nginx-ssl.crt ./ec2-setup-without-nat/
-COPY --from=create-ssl-stage /public-ec2-nginx-ssl.key ./ec2-setup-without-nat/
 
 
 

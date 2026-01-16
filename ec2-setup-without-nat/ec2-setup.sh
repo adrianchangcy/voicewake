@@ -6,14 +6,14 @@ set -e
 
 #=========HOW TO EXECUTE THIS SCRIPT=========
     #copy from S3 to host, give it executable permission, ensure vars passed is correct, and run
-        #sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/live-ec2-setup.sh ./live-ec2-setup.sh;
-        #sudo chmod -x ./live-ec2-setup.sh;
-        #STAGE_OR_PROD="stage" sh ./live-ec2-setup.sh;
+        #sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/ec2-setup.sh ./ec2-setup.sh;
+        #sudo chmod -x ./ec2-setup.sh;
+        #STAGE_OR_PROD="stage" sh ./ec2-setup.sh;
 #============================================
 
 #=========PREREQUISITES=========
-#1, prepare repo from online machine for offline installation
-    #refer to ./local-create-offline-repo.sh
+#1, prepare offline_repo from public EC2, saved to S3
+    #refer to ./ec2-create-offline-repo.sh
 
 #2, prepare VPC interface endpoint for ECR
     #only turn on when needing ecr pull, then delete when done
@@ -41,9 +41,10 @@ fi;
     #it took a few minutes for the correct network settings, to go successful "aws s3 ls" and failing "aws s3 cp", to fully successful
     #easier to do singular .env for entire machine
 sudo aws s3 cp "s3://voicewake-bucket/${STAGE_OR_PROD}.env" "./.env";
-sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/live-ec2-docker-compose.yaml ./live-ec2-docker-compose.yaml;
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/ec2-docker-compose.yaml ./ec2-docker-compose.yaml;
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/offline_repo.tar.gz ./offline_repo.tar.gz;
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/pgbackrest.tar.gz ./pgbackrest.tar.gz;
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/fail2ban.tar.gz ./fail2ban.tar.gz;
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/docker-compose /usr/libexec/docker/cli-plugins/docker-compose;
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/public-ec2-nginx-ssl.crt ./public-ec2-nginx-ssl.crt;
 sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/public-ec2-nginx-ssl.key ./public-ec2-nginx-ssl.key;
@@ -70,7 +71,7 @@ sudo mkdir -p /opt/offline_repo;
 
 #unpack into /opt, i.e. "optional", a conventional folder for storing software that is not part of core OS, to separate from /usr and /bin
     #for tar:
-        #x for extract
+        #x for extract, auto-replaces pre-existing files
         #z for gnuzip
         #v for verbose
         #f for file, should come at last just before file name
@@ -96,7 +97,7 @@ gpgcheck=0
     #cat /var/run/dnf.pid
     #ps -p $(cat /var/run/dnf.pid)
 
-#fix (using semicolon so you can copy and run entire block, as && exits on first failure)
+#if dnf hangs via "waiting for process id to finish", this fixes it
 sudo killall dnf rpm || true;
     #allow this to fail with "no process found"
 sudo rm -f /var/run/dnf.pid;
@@ -108,32 +109,87 @@ sudo dnf clean all;
 #install packages, use offline mode only at current line
     #-v is verbose
     #if you have more packages, just continue, e.g. install docker mypackage1 mypackage2 -v
-#docker + postgresql
+    #--skip-broken is to prioritise preinstalled packages
+#docker, postgresql, fail2ban
 sudo dnf --disablerepo="*" --enablerepo="offline" install \
     docker \
     postgresql17 \
     postgresql17-server \
+    fail2ban \
     -y -v;
 #pgbackrest dependencies
 sudo dnf --disablerepo="*" --enablerepo="offline" install \
     postgresql-libs libssh2 \
     -y -v;
-#meson + ninja-build + build dependencies
+#meson + ninja-build + build dependencies for building + missing dependencies; required by latest unreleased image's metadata on EC2
 sudo dnf --disablerepo="*" --enablerepo="offline" install \
     meson ninja-build \
-    postgresql17-devel \
-    gcc openssl-devel libxml2-devel lz4-devel libzstd-devel bzip2-devel libyaml-devel libssh2-devel \
-    -y -v --allowerasing;
-    #--allowerasing: public EC2 has some packages pre-installed compared to private EC2, this option resolves package conflicts
+    postgresql17-devel gcc kernel-headers openssl-devel libxml2-devel lz4-devel libzstd-devel bzip2-devel libyaml-devel libssh2-devel \
+    -y -v;
+
+
+
+#================================
+#=========FAIL2BAN SETUP=========
+#================================
+
+#remember to always use fail2ban-client to run direct commands, and not fail2ban-server
+
+#duplicate original jail.conf as jail.local, then use make edits at jail.local, since it takes precedence
+    #this is recommended over directly editing original file
+    #modifies [sshd] block, with these values:
+        #enabled = true
+            #determines if jail is active
+        #port    = ssh
+            #can be ssh/22/etc.
+        #backend = systemd
+            #all modern linux OS uses systemd's logging service (journal)
+            #using journal means you can remove this default key-value: "logpath = %(sshd_log)s"
+        #maxretry = 3
+            #tries before ban
+        #findtime = 300
+            #timeframe for max retries, in seconds
+        #bantime = 3600
+            #in seconds
+        #ignoreip = 127.0.0.1
+sudo aws s3 cp s3://voicewake-bucket/ec2-setup-without-nat/jail.local /etc/fail2ban/jail.local;
+
+#enable at startup, and restart
+sudo systemctl daemon-reload;
+sudo systemctl enable fail2ban;
+sudo systemctl restart fail2ban;
+
+#to intentionally trigger ban, try Windows cmd:
+    #sudo baduser@xxx.xxx.xxx.xxx
+
+#useful commands:
+    #check status
+        #sudo systemctl status fail2ban
+    #check detailed logs
+        #sudo journalctl -u fail2ban
+    #see blocked IPs
+        #sudo fail2ban-client status sshd
+    #see iptables rules made by fail2ban
+        #sudo iptables -L -n
+    #unban all IPs in all jails
+        #sudo fail2ban-client unban --all
+    #unban specific IP
+        #sudo fail2ban-client unban <ip-address>
+
+#================================
+#=========FAIL2BAN SETUP=========
+#================================
+
+
 
 #================================
 #========POSTGRESQL SETUP========
 #================================
 
-#set up psql directories if first time
-    #do this early to have file path ready for pgbackrest
-    #setup will fail if it already exists
-sudo postgresql-setup --initdb;
+#will complain about directory not being empty if not the first time
+    #plainly checking if directory exists with 'if sudo test ! -d "/var/lib/pgsql/data"' was insufficient
+    #lazy to dig further on how psql checks it
+sudo postgresql-setup --initdb || true;
 
 #enable auto-start next time, then start
 sudo systemctl enable postgresql;
@@ -204,7 +260,7 @@ sudo -u postgres -- psql -c "
 ";
 
 #check
-sudo systemctl status postgres;
+sudo systemctl status postgresql;
 
 #================================
 #========POSTGRESQL END==========
@@ -298,6 +354,7 @@ sudo awk -i inplace \
 
 #apply changes so pgbackrest can access archive_command in postgresql.conf
 sudo systemctl restart postgresql;
+sudo -u postgres -- psql -c "show archive_command;";
 
 #let pgbackrest prepare files at S3, based on repo1-path
 sudo -u postgres pgbackrest stanza-create --stanza="${CURRENT_ENV}" --log-level-console=info;
@@ -337,7 +394,7 @@ aws ecr get-login-password --region "${AWS_ECR_REGION_NAME}" \
     #remember to exclude .env inside .dockerfile build step, else it persists in container
     #containers also cannot access env vars at host machine
     #use --env-file to pass env vars in instead
-sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env pull;
+sudo docker compose --file ./ec2-docker-compose.yaml --env-file ./.env pull;
 
 #start docker
     #-d for detached, i.e. current terminal not occupied by docker
@@ -345,7 +402,7 @@ sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env pull
         #not using this can show errors better
     #up SERVICE_NAME to run only that service
     #--no-deps to ignore "depends" from yaml
-sudo docker compose --file ./live-ec2-docker-compose.yaml --env-file ./.env up -d;
+sudo docker compose --file ./ec2-docker-compose.yaml --env-file ./.env up -d;
 
 #run first full backup after django migrations from gunicorn container
     #do cronjob for full backup less frequently, i.e. --type=full

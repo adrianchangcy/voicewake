@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath, URL } from 'node:url';
 import vue from '@vitejs/plugin-vue';
-// import tailwindcss from '@tailwindcss/vite'
+// import tailwindcss from '@tailwindcss/vite';
 
 
 //using --env as custom option, this is the build command example:
@@ -42,6 +42,7 @@ function determineEnv() : 'dev'|'stage'|'prod' {
 
             //found arg that has string "--env="
             build_env = process.argv[x].split('--env=')[1];
+            break;
         }
     }
 
@@ -94,6 +95,7 @@ export default defineConfig({
         vue(),
         //if you get hydration mismatch error at console using files from production build, refer to this URL:
             //https://vuejs.org/api/compile-time-flags#vite
+        //currently not using tailwind v4 + Vite, because it doesn't edit output.css
         // tailwindcss(),
     ],
     server: {
@@ -106,7 +108,9 @@ export default defineConfig({
         },
         //needed this for nginx <-> django + URL to vue dev
         //https://vite.dev/config/server-options#server-cors
-        cors: '127.0.0.1',
+        cors: {
+            origin: ['https://127.0.0.1:8080', 'https://192.168.1.200:8080'],
+        },
     },
     build: {
         rollupOptions: {
