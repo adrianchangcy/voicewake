@@ -186,15 +186,12 @@
                             @isSubmitSuccessful="handleIsSubmitSuccessful($event)"
                         />
 
-                        <VTitle
+                        <div
                             v-show="expiry_string !== ''"
-                            prop-font-size="l"
-                            class="block py-2 w-fit mx-auto"
+                            class="w-fit text-sm mx-auto py-2"
                         >
-                            <template #titleDescription>
-                                {{ expiry_string }} left to reply.
-                            </template>
-                        </VTitle>
+                            {{ expiry_string }} left to reply.
+                        </div>
                     </div>
 
                 </div>

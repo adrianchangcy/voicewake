@@ -1,0 +1,44 @@
+#in compose.yaml, things such as "command" and "entrypoint" will override things like CMD and ENTRYPOINT at .dockerfile
+  #therefore, it's best to resort to .dockerfile and entrypoint.sh before placing such things here
+#.dockerignore is expected to be at root directory of build context, i.e. where you are running "docker build" from
+
+#since we only build these images then deploy to ECR and never run them in Github Actions, a lot of runtime args are unnecessary
+#also don't need .env, since env vars are injected only at start of runtime
+
+#as of Jan 2026, arm64 github action runner is not supported for free with public repos
+
+name: vw
+services:
+  #using own redis instead of AWS Elasticache to save cost
+  #reliability from AWES Elasticache is not as important yet, due to low traffic and resilient cache handling logic
+  redis:
+    image: redis:latest
+    platform: "linux/x86_64"
+
+  django_gunicorn:
+    build:
+      #. because it relies on files like manage.py
+      context: .
+      dockerfile: ./voicewake/docker/service-gunicorn.dockerfile
+    platform: "linux/x86_64"
+
+  django_celery_worker:
+    build:
+      #. because it relies on files like manage.py
+      context: .
+      dockerfile: ./voicewake/docker/service-celery-worker.dockerfile
+    platform: "linux/x86_64"
+
+  django_celery_beat:
+    build:
+      #. because it relies on files like manage.py
+      context: .
+      dockerfile: ./voicewake/docker/service-celery-beat.dockerfile
+    platform: "linux/x86_64"
+
+  #besides throttling, nginx will serve /static/, not Gunicorn
+  nginx:
+    build:
+      context: .
+      dockerfile: ./nginx/Dockerfile
+    platform: "linux/x86_64"

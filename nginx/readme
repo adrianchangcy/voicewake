@@ -1,0 +1,5 @@
+#if first time, refer to default.conf.template for creating SSL files
+
+#useful commands:
+    nginx -T
+    nginx -T | grep worker_processes
