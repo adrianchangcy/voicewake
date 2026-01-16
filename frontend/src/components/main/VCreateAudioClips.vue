@@ -769,9 +769,9 @@
                     return;
                 }
 
-                switch(target_audio_clip_processing.status){
+                switch(target_audio_clip_processing.frontend_processing_state){
 
-                    case 'processed':
+                    case 'ok':
 
                         //success, redirect
 

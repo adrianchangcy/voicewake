@@ -1,7 +1,7 @@
 import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
 
-export type BackendAudioClipProcessingGenericStatusNames = 'processing'|'processing_pending'|'processing_failed';
-export type FrontendAudioClipProcessingStates = 'processing_pending'|'processing'|'processing_failed'|'ok'|'not_found';
+export type BackendAudioClipProcessingGenericStatusNames = 'processing_pending'|'processing'|'processing_failed';
+export type FrontendAudioClipProcessingStates = BackendAudioClipProcessingGenericStatusNames|'ok'|'not_found';
 export interface EventsTypes{
     id:number,
     event_name: string,
@@ -18,7 +18,7 @@ export interface ProcessingCacheTypes{
             audio_clip_role_name: 'originator'|'responder',
             event: EventsTypes,
             audio_clip_tone: AudioClipTonesTypes,
-            frontend_processing_state: FrontendAudioClipProcessingStates,
+            status: BackendAudioClipProcessingGenericStatusNames,
             attempts_left: number|null,
         },
     },
