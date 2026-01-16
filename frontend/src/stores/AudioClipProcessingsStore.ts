@@ -254,7 +254,7 @@ export function useAudioClipProcessingsStore(){
                             audio_clip_role_name: processing['audio_clip_role_name'],
                             event: processing['event'],
                             audio_clip_tone: processing['audio_clip_tone'],
-                            frontend_processing_state: processing['frontend_processing_state'] as BackendAudioClipProcessingGenericStatusNames,
+                            frontend_processing_state: processing['status'],
                             last_attempt: '',
                             attempts_left: processing['attempts_left'],
                             title: '',
@@ -267,7 +267,7 @@ export function useAudioClipProcessingsStore(){
                         const new_processing = this.updateProcessing(
                             audio_clip_id,
                             default_processing,
-                            processing['frontend_processing_state'] as BackendAudioClipProcessingGenericStatusNames,
+                            processing['status'],
                             processing['attempts_left'],
                         )
 
@@ -343,7 +343,7 @@ export function useAudioClipProcessingsStore(){
                     }else if(
                         Object.hasOwn(result.data, 'status') === true &&
                         Object.hasOwn(result.data, 'attempts_left') === true &&
-                        result.data['status'] === 'processing_failed'
+                        result.data['status'] as BackendAudioClipProcessingGenericStatusNames === 'processing_failed'
                     ){
 
                         //not processing, i.e. failed
@@ -394,7 +394,7 @@ export function useAudioClipProcessingsStore(){
                             if(
                                 Object.hasOwn(error.response.data, 'status') === true &&
                                 Object.hasOwn(error.response.data, 'attempts_left') === true &&
-                                error.response.data['status'] === 'processing'
+                                error.response.data['status'] as BackendAudioClipProcessingGenericStatusNames === 'processing'
                             ){
 
                                 //still processing
@@ -779,7 +779,7 @@ export function useAudioClipProcessingsStore(){
 
                     default:
 
-                        throw new Error('Invalid status for updateProcessing().');
+                        throw new Error('Invalid status for updateProcessing(): ' + frontend_processing_state);
                 }
             },
             getActionButtonCallback(audio_clip_id:number, action_index:number) : (()=>void)|void {
