@@ -76,6 +76,9 @@ sudo dnf download --resolve --destdir=offline_repo/pkgs \
     #ninja is "ninja-build" in AWS Linux 2023
     #installation guides depending on OS
         #https://pgbackrest.org/user-guide-index.html
+#dos2unix to guarantee Windows-edited file does not have hidden newlines when running "awk" command in linux
+sudo dnf download --resolve --destdir=offline_repo/pkgs \
+    dos2unix;
 
 #step 2d, creating repo of our packages then compressing
 sudo createrepo_c offline_repo/pkgs;
