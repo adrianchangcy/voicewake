@@ -395,6 +395,7 @@
                 is_logged_in: false,
                 is_superuser: false,
                 username: '',
+                user_profile_page_username: '',
 
                 //data-container
                 is_blocked: false,
@@ -679,7 +680,7 @@
                 if(this.isUserProfilePage === true){
 
                     //signature URL
-                    full_url += "/user" + "/" + this.username;
+                    full_url += "/user" + "/" + this.user_profile_page_username;
 
                 }else if(this.isUserLikesDislikesPage === true){
 
@@ -996,6 +997,12 @@
             this.is_logged_in = isLoggedIn();
             this.is_superuser = isSuperuser();
             this.username = getUsername();
+
+            if(this.isUserProfilePage === true){
+
+                const container = (document.getElementById('data-container-get-user-profile') as HTMLElement);
+                this.user_profile_page_username = (container.getAttribute('data-username') as string);
+            }
 
             //reset store if not navigated from back/forward
             this.resetStores();
