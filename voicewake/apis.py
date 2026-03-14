@@ -43,7 +43,6 @@ from voicewake.models import *
 from voicewake.serializers import *
 from voicewake.services import *
 from voicewake.tasks import *
-from voicewake.factories import *
 import voicewake.decorators as app_decorators
 from django.conf import settings
 
