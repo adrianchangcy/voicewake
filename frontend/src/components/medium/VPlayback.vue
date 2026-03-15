@@ -1010,7 +1010,6 @@
                 this.is_playback_slider_ready = true;
                 this.is_playback_slider_processing = false;
             },
-            //MINOR BUG: on last 0.5s, if doRedraw(), playback stays ended but animation autoplays from beginning
             adjustPlaybackSliderDimension() : boolean {
 
                 //returns true if there is change
@@ -1516,6 +1515,8 @@
                     this.createPlaybackSliderAnimate();
                     this.setInitialPlaybackSliderValue();
                     this.seekPlayback();
+                    //must call this in case ended audio is loaded in
+                    this.endPlaybackTruly();
                     this.handleInitialAutoplay();
 
                     this.is_initialised_on_new_audio = true;
