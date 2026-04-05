@@ -27,7 +27,7 @@
             -out "./nginx/dev-nginx-ssl.crt" \
             -keyout "./nginx/dev-nginx-ssl.key" \
             -subj "/C=MY/ST=Sarawak/L=Kuching/O=Security/OU=ITDepartment/CN=${MY_IPV4_LAN_ADDR}";
-    command notes:
+    #command notes:
         #to fix "subj format error" on Windows, use MSYS_NO_PATHCONV=1 to prevent Windows from treating subj as file path
         #use ipconfig.exe to show our IPv4 addresses
             #"tail -n 1" since our actual LAN IP is usually the last one
