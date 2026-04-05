@@ -73,6 +73,10 @@ services:
       - type: bind
         source: ./django_runserver.py
         target: /django_runserver.py
+      #generated from coverage html:
+      - type: bind
+        source: ./htmlcov
+        target: /htmlcov
     restart: unless-stopped
     env_file:
       - /env/.env

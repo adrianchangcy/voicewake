@@ -719,7 +719,64 @@ class Users_TestCase(TestCase):
         self.assertEqual(user_instance.username_lowercase, 'user1')
 
 
-    def test_set_username_when_username_exists(self):
+    def test_get_username(self):
+
+        self.test_set_username_is_logged_in()
+
+        response = self.client.post(reverse('users_log_out_api'))
+        self.assertEqual(response.wsgi_request.user.is_authenticated, False)
+
+        #new account
+        another_email = 'user2@gmail.com'
+
+        self.test_sign_up_ok(another_email)
+
+        #get username that exists
+
+        response = self.client.get(
+            reverse('users_get_username_api',
+                kwargs={
+                    'username': 'user1',
+                }
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        response_data = get_response_data(response)['data']
+
+        self.assertEqual(response_data['username'], 'user1')
+        self.assertTrue(response_data['exists'])
+
+        #get username that violates serializer
+
+        response = self.client.get(
+            reverse('users_get_username_api',
+                kwargs={
+                    'username': '@@@@@@@@@@@@@@',
+                }
+            )
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+        #get username that does not exist
+
+        response = self.client.get(
+            reverse('users_get_username_api',
+                kwargs={
+                    'username': 'user99999',
+                }
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        response_data = get_response_data(response)['data']
+
+        self.assertEqual(response_data['username'], 'user99999')
+        self.assertFalse(response_data['exists'])
+
+
+    def test_set_username(self):
 
         self.test_set_username_is_logged_in()
 
@@ -768,6 +825,20 @@ class Users_TestCase(TestCase):
         )
 
         #expect
+        self.assertEqual(user_instance.username, 'user2')
+        self.assertEqual(user_instance.username_lowercase, 'user2')
+
+        #set username, but already set
+        response = self.client.post(reverse('users_set_username_api'), data={
+            'username': 'user9999',
+        })
+
+        user_instance = get_user_model().objects.get(
+            email_lowercase=another_email.lower()
+        )
+
+        #expect
+        self.assertEqual(response.status_code, 403)
         self.assertEqual(user_instance.username, 'user2')
         self.assertEqual(user_instance.username_lowercase, 'user2')
 
@@ -982,6 +1053,56 @@ class Core_TestCase(TestCase):
         return UserBlocks.objects.create(
             user_id=user_id,
             blocked_user_id=blocked_user_id
+        )
+
+
+    def test_get_audio_clip_tones(self):
+
+        #delete from cache
+        #force retrieval from db
+
+        cache.set("all_audio_clip_tones", None)
+
+        #start
+
+        self.login(self.users[0])
+
+        request = self.client.get(
+            reverse(
+                'audio_clip_tones_api',
+            )
+        )
+
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)['data']
+
+        self.assertEqual(
+            len(response_data),
+            AudioClipTones.objects.all().count()
+        )
+
+        self.assertIsNotNone(cache.get("all_audio_clip_tones", None))
+
+        #expect to get from cache
+
+        request = self.client.get(
+            reverse(
+                'audio_clip_tones_api',
+            )
+        )
+
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)['data']
+
+        self.assertEqual(
+            len(response_data),
+            AudioClipTones.objects.all().count()
         )
 
 
@@ -3324,7 +3445,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(len(response_data), 0)
 
 
-    def test_list_event_reply_choices_daily_limit_reached(self):
+    def test_list_reply_choices_daily_limit_reached(self):
 
         #prepare data
 

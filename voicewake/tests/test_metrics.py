@@ -19,9 +19,14 @@ import math
 from typing import Literal
 import inspect
 import time
-import threading
 import multiprocessing
 import traceback
+
+
+
+#fix for AppRegistryNotReady
+#call this at the top once only, else it throws exception on second call
+multiprocessing.set_start_method('fork')
 
 
 
@@ -3094,9 +3099,13 @@ class RealisticBulkData_SampleRun_TestCase(TestCase):
     #python manage.py test voicewake.tests.test_metrics.Some_TestCase.the_test --testrunner='voicewake.tests.test_metrics.TestRunnerWithMirror'
     #build your data in local dev database (not test database), then run against it using custom test runner
     #test each test_() individually, as running all tests concurrently will have worse performance
-#this test handles full validation and performance of apis.BrowseEvents
-    #easier to do it here than to duplicate into test_apis and test_metrics
-    #uses RealisticBulkData
+#what is being tested:
+    #apis:
+        #super simple just for the sake of test coverage
+        #subprocess_worker() has thorough testing, let metrics handle all scenarios
+        #need this because "coverage" does not evaluate child processes without a custom setup
+    #metrics:
+        #thorough test cases with full validation for each test case via subprocess_worker()
 #logic behaviours:
     #since we have cursor tokens, always test (latest->back/to), (earliest->back/to)
     #for tests that test on filtering, we iterate through list of filters in a single test case, else exponential
@@ -3132,7 +3141,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
         #.put() inserts an item, .get() retrieves the item and leaves queue empty
         cls.subprocess_queue_to_store_exceptions = multiprocessing.Queue()
 
-        cls.maximum_time_elapsed_ms = 300
+        cls.maximum_time_elapsed_ms = 200
         cls.print_all_time_elapsed = False
 
 
@@ -3418,7 +3427,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
     #practical: this function will be completely isolated, and will copy over everything in Class.self as its own
     #multiprocessing.Event() is a proxy that functions as simplest communication between subprocesses, so use .Queue()/.Pipe() if more complex
     def subprocess_worker(
-        self, api_context:Literal['home', 'specific_user', 'own_likes_dislikes'],
+        self, is_metrics_test:bool, api_context:Literal['home', 'specific_user', 'own_likes_dislikes'],
         subprocess_index:int, test_cases:list, skip_to_test_index_in_subprocess:int=None
     ):
 
@@ -3444,6 +3453,8 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
             #each process/subprocess must have its own Client() so user sessions don't clash at db
             subprocess_client = Client()
+
+            #proceed with tests
 
             for test_index, test_case in enumerate(test_cases):
 
@@ -3482,7 +3493,19 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                     try:
 
-                        current_test_completion_percentage = math.floor((test_index / (test_case_count_by_zero_index)) * 100)
+                        try:
+                            
+                            current_test_completion_percentage = math.floor((test_index / (test_case_count_by_zero_index)) * 100)
+
+                        except ZeroDivisionError:
+
+                            #happens when executing only 1 test case
+                            #catch this error so it can continue to display 0-based test_index at progression for future skips
+                            current_test_completion_percentage = 100
+
+                        except Exception as e:
+
+                            raise e
 
                         if self.print_all_time_elapsed is True or current_test_completion_percentage > old_test_completion_percentage:
 
@@ -3996,7 +4019,172 @@ class BrowseEvents_TestCase(TransactionTestCase):
             test_completion_per_percentage_stopwatch.stop()
 
 
-    def test_browse_events__main_page(self, subprocess_count=3, skip_to_subprocess_index:int|None=None, skip_to_test_index:int|None=None):
+    def test_browse_events__apis__main_page(self):
+
+        current_kwargs = {
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'next',
+        }
+
+        test_cases = []
+
+        test_cases.append([])
+
+        test_cases[0].append({
+            'api_kwargs': current_kwargs,
+            'test_values': {
+                'is_excluded_audio_clip_tone': False,
+                'login_user': self.main_users[0],
+                'target_user': None,
+                'expected_event_generic_status_names': ['completed'],
+            }
+        })
+
+        self.subprocess_worker(False, 'home', 0, test_cases[0], 0)
+
+        if self.subprocess_queue_to_store_exceptions.empty() is False:
+
+            error_report = self.subprocess_queue_to_store_exceptions.get()
+    
+            print('\n\n\n')
+            print('ERROR')
+    
+            for error_key in error_report:
+            
+                print(f'{error_key}:')
+                print(error_report[error_key])
+    
+            #not useful because it doesn't preserve stack trace, but it's just to properly fail the test case here
+            raise error_report['exception']
+
+
+    def test_browse_events__apis__own_page(self):
+
+        test_cases = []
+        test_cases.append([])
+
+        current_kwargs = {
+            'username': self.main_users[0].username,
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'next',
+        }
+
+        test_cases[0].append({
+            'api_kwargs': current_kwargs,
+            'test_values': {
+                'is_excluded_audio_clip_tone': False,
+                'login_user': self.main_users[0],
+                'target_user': self.main_users[0],
+                'expected_event_generic_status_names': ['incomplete', 'completed'],
+            }
+        })
+
+        self.subprocess_worker(False, 'specific_user', 0, test_cases[0], 0)
+
+        if self.subprocess_queue_to_store_exceptions.empty() is False:
+
+            error_report = self.subprocess_queue_to_store_exceptions.get()
+    
+            print('\n\n\n')
+            print('ERROR')
+    
+            for error_key in error_report:
+            
+                print(f'{error_key}:')
+                print(error_report[error_key])
+    
+            #not useful because it doesn't preserve stack trace, but it's just to properly fail the test case here
+            raise error_report['exception']
+
+
+    def test_browse_events__apis__other_user_page(self):
+
+        test_cases = []
+        test_cases.append([])
+
+        current_kwargs = {
+            'username': self.main_users[1].username,
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'next',
+        }
+
+        test_cases[0].append({
+            'api_kwargs': current_kwargs,
+            'test_values': {
+                'is_excluded_audio_clip_tone': False,
+                'login_user': self.main_users[0],
+                'target_user': self.main_users[1],
+                'expected_event_generic_status_names': ['incomplete', 'completed'],
+            }
+        })
+
+        self.subprocess_worker(False, 'specific_user', 0, test_cases[0], 0)
+
+        if self.subprocess_queue_to_store_exceptions.empty() is False:
+
+            error_report = self.subprocess_queue_to_store_exceptions.get()
+    
+            print('\n\n\n')
+            print('ERROR')
+    
+            for error_key in error_report:
+            
+                print(f'{error_key}:')
+                print(error_report[error_key])
+    
+            #not useful because it doesn't preserve stack trace, but it's just to properly fail the test case here
+            raise error_report['exception']
+
+
+    def test_browse_events__apis__own_like_dislike_page(self):
+
+        test_cases = []
+        test_cases.append([])
+
+        current_kwargs = {
+            'username': self.main_users[0].username,
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'next',
+            'likes_or_dislikes': 'likes',
+        }
+
+        test_cases[0].append({
+            'api_kwargs': current_kwargs,
+            'test_values': {
+                'is_excluded_audio_clip_tone': False,
+                'login_user': self.main_users[0],
+                'target_user': self.main_users[0],
+                'expected_event_generic_status_names': ['incomplete', 'completed'],
+            }
+        })
+
+        self.subprocess_worker(False, 'own_likes_dislikes', 0, test_cases[0], 0)
+
+        if self.subprocess_queue_to_store_exceptions.empty() is False:
+
+            error_report = self.subprocess_queue_to_store_exceptions.get()
+
+            print('\n\n\n')
+            print('ERROR')
+
+            for error_key in error_report:
+
+                print(f'{error_key}:')
+                print(error_report[error_key])
+
+            #not useful because it doesn't preserve stack trace, but it's just to properly fail the test case here
+            raise error_report['exception']
+
+
+    def test_browse_events__metrics__main_page(self, subprocess_count=3, skip_to_subprocess_index:int|None=None, skip_to_test_index:int|None=None):
 
         if skip_to_subprocess_index is not None and skip_to_subprocess_index >= subprocess_count:
 
@@ -4124,7 +4312,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
             subprocesses.append(multiprocessing.Process(
                 target=self.subprocess_worker,
-                args=('home', x, full_test_cases[x], skip_to_test_index)
+                args=(True, 'home', x, full_test_cases[x], skip_to_test_index)
             ))
 
         #run subprocesses
@@ -4161,7 +4349,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
             raise error_report['exception']
 
 
-    def test_browse_events__own_page(self, subprocess_count=3, skip_to_subprocess_index:int|None=None, skip_to_test_index:int|None=None):
+    def test_browse_events__metrics__own_page(self, subprocess_count=3, skip_to_subprocess_index:int|None=None, skip_to_test_index:int|None=None):
 
         if skip_to_subprocess_index is not None and skip_to_subprocess_index >= subprocess_count:
 
@@ -4301,7 +4489,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
             subprocesses.append(multiprocessing.Process(
                 target=self.subprocess_worker,
-                args=('specific_user', x, full_test_cases[x], skip_to_test_index)
+                args=(True, 'specific_user', x, full_test_cases[x], skip_to_test_index)
             ))
 
         #run subprocesses
@@ -4341,7 +4529,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
     #with only skip_to_subprocess_index, you are using that subprocess only
     #with only skip_to_test_index, you are making all subprocesses skip to that test index
     #with skip_to_subprocess_index and skip_to_test_index, you are using only that subprocess and skipping to test index
-    def test_browse_events__other_user_page(self, subprocess_count=3, skip_to_subprocess_index:int|None=None, skip_to_test_index:int|None=None):
+    def test_browse_events__metrics__other_user_page(self, subprocess_count=3, skip_to_subprocess_index:int|None=None, skip_to_test_index:int|None=None):
 
         if skip_to_subprocess_index is not None and skip_to_subprocess_index >= subprocess_count:
 
@@ -4488,7 +4676,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
             subprocesses.append(multiprocessing.Process(
                 target=self.subprocess_worker,
-                args=('specific_user', x, full_test_cases[x], skip_to_test_index)
+                args=(True, 'specific_user', x, full_test_cases[x], skip_to_test_index)
             ))
 
         #run subprocesses
@@ -4526,7 +4714,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
 
     #users can only view their own likes/dislikes
-    def test_browse_events__own_like_dislike_page(self, subprocess_count=3, skip_to_subprocess_index:int|None=None, skip_to_test_index:int|None=None):
+    def test_browse_events__metrics__own_like_dislike_page(self, subprocess_count=3, skip_to_subprocess_index:int|None=None, skip_to_test_index:int|None=None):
 
         if skip_to_subprocess_index is not None and skip_to_subprocess_index >= subprocess_count:
 
@@ -4670,7 +4858,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
             subprocesses.append(multiprocessing.Process(
                 target=self.subprocess_worker,
-                args=('own_likes_dislikes', x, full_test_cases[x], skip_to_test_index)
+                args=(True, 'own_likes_dislikes', x, full_test_cases[x], skip_to_test_index)
             ))
 
         #run subprocesses
@@ -4726,6 +4914,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
 #how to test:
     #test each test_() individually, as running all tests concurrently will have worse performance
+    #python manage.py test voicewake.tests.test_metrics.Some_TestCase.the_test --testrunner='voicewake.tests.test_metrics.TestRunnerWithMirror'
 #only test for basic correctness and db test data setup
 #leave API correctness at test_apis
 @override_settings(
@@ -5101,7 +5290,19 @@ class ListEventReplyChoices_TestCase(TransactionTestCase):
 
                 test_index_in_subprocess = test_index
 
-                current_test_completion_percentage = math.floor((test_index / (test_case_count_by_zero_index)) * 100)
+                try:
+                    
+                    current_test_completion_percentage = math.floor((test_index / (test_case_count_by_zero_index)) * 100)
+
+                except ZeroDivisionError:
+
+                    #happens when executing only 1 test case
+                    #catch this error so it can continue to display 0-based test_index at progression for future skips
+                    current_test_completion_percentage = 100
+
+                except Exception as e:
+
+                    raise e
 
                 if self.print_all_time_elapsed is True or current_test_completion_percentage > old_test_completion_percentage:
 

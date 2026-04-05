@@ -14,6 +14,9 @@ COPY ./nginx/50x.html /etc/nginx/html/
 
 EXPOSE 8080
 
+#to verify that nginx container's built-in envsubst is successful via compose's env_file on default.conf.template:
+    #cat /etc/nginx/conf.d/default.conf
+
 #for normal NGINX, skip CMD, let NGINX use its own entrypoint
 #for debug, use CMD below, and specify "...error.log debug;" at nginx.conf
 # CMD ["nginx-debug", "-g", "daemon off;"]

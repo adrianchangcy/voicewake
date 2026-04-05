@@ -1,11 +1,7 @@
 /*put these here so tailwind can listen*/
-/*prefer to be explicit because tailwind should look at /voicewake and /frontend*/
-/* https://tailwindcss.com/docs/detecting-classes-in-source-files#disabling-automatic-detection */
-@import "tailwindcss" source(none);
-@config "../../../tailwind.config.js";
-@source "../../../voicewake/templates/**/*.html";
-@source "../../../voicewake/static/**/*.{js,svg}";
-@source "../../../frontend/src/**/*.{vue,js,ts,jsx,tsx}";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /*enable this to troubleshoot css errors*/
 /* * {

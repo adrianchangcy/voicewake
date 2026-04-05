@@ -863,11 +863,9 @@ class AudioClipTonesAPI(generics.GenericAPIView):
 
         try:
 
-            sentinel = object()
+            audio_clip_tones = cache.get("all_audio_clip_tones", None)
 
-            audio_clip_tones = cache.get("all_audio_clip_tones", default=sentinel)
-
-            if audio_clip_tones is sentinel:
+            if audio_clip_tones is None:
 
                 #does not exist in cache
                 #retrieve and store in cache
@@ -890,14 +888,15 @@ class AudioClipTonesAPI(generics.GenericAPIView):
         except Exception as e:
 
             raise e
-
+        
         response = Response(
             data={
                 'data': AudioClipTonesSerializer(
                     audio_clip_tones,
                     many=True
                 ).data
-            }
+            },
+            status=status.HTTP_200_OK
         )
 
         patch_cache_control(
@@ -1929,15 +1928,6 @@ class CreateEventsAPI(generics.GenericAPIView):
                     status=status.HTTP_200_OK
                 )
 
-        except AudioClipTones.DoesNotExist:
-
-            return Response(
-                data={
-                    'message': 'Your selected tag was not found. Try a different one.',
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-
         except Exception as e:
 
             if get_user_message_from_custom_error(e) == "":
@@ -2757,15 +2747,6 @@ class EventRepliesAPI(generics.GenericAPIView):
                 #delete event_reply_queue
                 return self.cancel_reply_in_event(request_data['event_id'])
 
-        except AudioClipTones.DoesNotExist:
-
-            return Response(
-                data={
-                    'message': 'Your selected tag was not found. Try a different one.',
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
         except Events.DoesNotExist:
 
             return Response(

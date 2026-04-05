@@ -332,6 +332,10 @@ class CreateAudioClips_Upload_APISerializer(serializers.Serializer):
 
                 raise serializers.ValidationError("event_id was not passed.")
 
+        if AudioClipTones.objects.filter(pk=data['audio_clip_tone_id']).exists() is False:
+
+            raise serializers.ValidationError("audio_clip_tone_id is invalid. Try a different one.")
+
         return data
 
 
@@ -382,9 +386,6 @@ class UsersUsernameAPISerializer(serializers.Serializer):
     username = serializers.CharField(
         min_length=1,
         max_length=settings.USERNAME_MAX_LENGTH,
-    )
-    exists = serializers.BooleanField(
-        required=False
     )
 
 
