@@ -309,7 +309,7 @@ export function emailValidatorDjango(email:string) : boolean {
     //latest version has more complexity that requires serious refactoring into JS
     //https://github.com/django/django/blob/main/django/core/validators.py
 
-
+    //@ts-ignore
     return new RegExp(/(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*|^"([\001-\010\013\014\016-\037!#-[\]-\177]|\\[\001-\011\013\014\016-\177])*")@((?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)$)|\[(25[0-5]|2[0-4]\d|[0-1]?\d?\d)(\.(25[0-5]|2[0-4]\d|[0-1]?\d?\d)){3}\]$/, 'i').test(email);
 }
 

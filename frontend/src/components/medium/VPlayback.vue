@@ -139,9 +139,12 @@
                             ]"
                         ></div>
 
+                        <!--moving playback elements-->
+                        <!--cannot use class scale-x-0, it will lock the element and prevent animate's scaleX from applying-->
                         <div
                             ref="playback_slider_progress"
-                            class="h-1 absolute bg-theme-lead dark:bg-dark-theme-lead left-0 right-0 bottom-2 m-auto scale-x-0 origin-left"
+                            class="h-1 absolute bg-theme-lead dark:bg-dark-theme-lead left-0 right-0 bottom-2 m-auto origin-left"
+                            style="transform:scaleX(0);"
                         ></div>
                         <!--cannot apply scale to knob for some reason-->
                         <div
@@ -197,19 +200,17 @@
                             
                             class="w-full h-[2.1875rem] absolute bottom-0 focus-visible:-outline-offset-2 focus-visible:outline-1"
                         >
-                            <div class="w-full h-full relative">
-                                <span
-                                    :class="[
-                                        is_playback_volume_open ? '-rotate-90' : 'rotate-0',
-                                        'w-fit h-fit absolute inset-0 m-auto transition-transform'
-                                    ]"
-                                >
-                                    <FontAwesomeIcon v-show="isMuted" icon="fas fa-volume-xmark" class="align-middle block"/>
-                                    <FontAwesomeIcon v-show="isLowVolume" icon="fas fa-volume-low" class="align-middle block"/>
-                                    <FontAwesomeIcon v-show="isHighVolume" icon="fas fa-volume-high" class="align-middle block"/>
-                                </span>
-
+                            <div
+                                :class="[
+                                    is_playback_volume_open ? '-rotate-90' : 'rotate-0',
+                                    'flex w-full h-full relative transition-transform'
+                                ]"
+                            >
+                                <FontAwesomeIcon v-show="isMuted" icon="fas fa-volume-xmark" class="absolute w-0 h-0 inset-0 m-auto"/>
+                                <FontAwesomeIcon v-show="isLowVolume" icon="fas fa-volume-low" class="absolute w-0 h-0 inset-0 m-auto"/>
+                                <FontAwesomeIcon v-show="isHighVolume" icon="fas fa-volume-high" class="absolute w-0 h-0 inset-0 m-auto"/>
                             </div>
+
                             <span v-show="isMuted" class="sr-only">
                                 unmute to bring volume back to {{ getBackupVolume }}
                             </span>
@@ -1122,10 +1123,18 @@
 
                     //edge case: seeked to end, but .ended still false
                     //we use .play() and muted=true to fix, while not touching anything else
+
+                    //to prevent button from flashing during "already ended" + endPlaybackTruly(),
+                    //manipulate playback_paused to stay paused
+                    //if original state is playing, .finally() will revert to it
+
                     audio_element.muted = true;
+                    const original_playback_paused = this.playback_paused;
+                    this.playback_paused = true;
                     this.play_promise = audio_element.play().finally(()=>{
 
                         this.play_promise = null;
+                        this.playback_paused = original_playback_paused;
                     });
 
                 //as of 2023-08-17, this block is important
@@ -1506,6 +1515,8 @@
                     this.createPlaybackSliderAnimate();
                     this.setInitialPlaybackSliderValue();
                     this.seekPlayback();
+                    //must call this in case ended audio is loaded in
+                    this.endPlaybackTruly();
                     this.handleInitialAutoplay();
 
                     this.is_initialised_on_new_audio = true;

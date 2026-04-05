@@ -1,0 +1,293 @@
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    #block bots
+    map $http_user_agent $limit_bots {
+        default 0;
+        ~*(AltaVista|Slurp|BlackWidow|Bot|ChinaClaw|Custo|DISCo|Download|Demon|eCatch|EirGrabber|EmailSiphon|EmailWolf|SuperHTTP|Surfbot|WebWhacker) 1;
+        ~*(Express|WebPictures|ExtractorPro|EyeNetIE|FlashGet|GetRight|GetWeb!|Go!Zilla|Go-Ahead-Got-It|GrabNet|Grafula|HMView|Go!Zilla|Go-Ahead-Got-It) 1;
+        ~*(rafula|HMView|HTTrack|Stripper|Sucker|Indy|InterGET|Ninja|JetCar|Spider|larbin|LeechFTP|Downloader|tool|Navroad|NearSite|NetAnts|tAkeOut|WWWOFFLE) 1;
+        ~*(GrabNet|NetSpider|Vampire|NetZIP|Octopus|Offline|PageGrabber|Foto|pavuk|pcBrowser|RealDownload|ReGet|SiteSnagger|SmartDownload|SuperBot|WebSpider) 1;
+        ~*(Teleport|VoidEYE|Collector|WebAuto|WebCopier|WebFetch|WebGo|WebLeacher|WebReaper|WebSauger|eXtractor|Quester|WebStripper|WebZIP|Wget|Widow|Zeus) 1;
+        ~*(Twengabot|htmlparser|libwww|Python|perl|urllib|scan|Curl|email|PycURL|Pyth|PyQ|WebCollector|WebCopy|webcraw) 1;
+    }
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    server_tokens off;
+
+    keepalive_timeout  10s;
+    keepalive_requests 30;
+    send_timeout 30s;
+
+    limit_conn_zone $binary_remote_addr zone=per_ip:1m;
+
+    #better too high than too low
+    limit_req_zone $binary_remote_addr zone=static:1m rate=${NGINX_RATE_LIMIT_STATIC}r/s;
+    limit_req_zone $binary_remote_addr zone=default:1m rate=${NGINX_RATE_LIMIT_MID}r/s;
+    limit_req_zone $binary_remote_addr zone=common_list_apis:1m rate=${NGINX_RATE_LIMIT_MID}r/s;
+    limit_req_zone $binary_remote_addr zone=common_get_apis:1m rate=${NGINX_RATE_LIMIT_HIGH}r/s;
+    limit_req_zone $binary_remote_addr zone=light_compute_apis:1m rate=${NGINX_RATE_LIMIT_MID}r/s;
+    limit_req_zone $binary_remote_addr zone=moderate_compute_apis:1m rate=${NGINX_RATE_LIMIT_MID}r/s;
+    limit_req_zone $binary_remote_addr zone=audio_file_lambda_compute_apis:1m rate=${NGINX_RATE_LIMIT_LOW}r/s;
+    limit_req_zone $binary_remote_addr zone=account_apis:1m rate=${NGINX_RATE_LIMIT_LOW}r/s;
+    limit_req_zone $binary_remote_addr zone=audio_clip_processings:1m rate=${NGINX_RATE_LIMIT_HIGH}r/s;
+    limit_req_zone $binary_remote_addr zone=audio_clip_reports:1m rate=${NGINX_RATE_LIMIT_LOW}r/s;
+
+    #set custom return code when rate limited, default 503, requires version >= 1.3.15
+    limit_req_status 429;
+    limit_conn_status 429;
+
+    #gzip  on;
+
+    #follow the service name in compose.yml
+    #NGINX seems to recognise Docker service names, so don't use them for upstream names
+    #upstream names, i.e. host names, cannot use underscores, else "RFC 1034/1035" error at Django
+    #upstream name specified below must be allowed in Django's ALLOWED_HOSTS, as it is sometimes directly passed as Host header
+    upstream main {
+        server ${DJANGO_SERVICE_NAME}:${DJANGO_PORT};
+    }
+
+    server {
+        #without SSL
+        #listen             8080;
+
+        #with SSL
+        listen              8080 ssl;
+        ssl_certificate     /etc/nginx/${NGINX_SSL_FILE_NAME}.crt;
+        ssl_certificate_key /etc/nginx/${NGINX_SSL_FILE_NAME}.key;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+        ssl_ciphers         HIGH:!aNULL:!MD5;
+        ssl_session_timeout  5m;
+        ssl_prefer_server_ciphers  on;
+
+        server_name  django;
+
+        #max open connections per IP
+        limit_conn per_ip 10;
+
+        #timeout between client request and its body/header that is not yet sent
+        client_body_timeout 12s;
+        client_header_timeout 12s;
+
+        #forward original host, so we can dynamically do 192.168.1.x:viteport
+        #otherwise, doing static 127.0.0.1:viteport from remote IP will refer to remote device itself
+        proxy_set_header Host $host;
+
+        #need this for keepalive
+        proxy_http_version 1.1;
+        proxy_set_header "Connection" "";
+
+        #allow only localhost + static ip in dev, or authorised users in staging
+        #satisfy any;
+        #allow 127.0.0.1;
+        #allow 192.168.1.200;
+        #deny all;
+
+        #simple but important headers for better security
+        add_header X-Frame-Options SAMEORIGIN;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Permitted-Cross-Domain-Policies master-only;
+        add_header Referrer-Policy same-origin;
+        add_header Strict-Transport-Security 'max-age=31536000; includeSubDomains; preload;';
+
+        #tempoarily exclude this, due to conflict with Vue
+        # add_header Content-Security-Policy "default-src 'self';";
+
+        #charset koi8-r;
+
+        #access_log  logs/host.access.log  main;
+
+        #error_page  404              /404.html;
+
+        #block the bots
+        if ($limit_bots = 1) {
+            return 403;
+        }
+
+        # redirect server error pages to the static page /50x.html
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root /etc/nginx/html;
+            try_files $uri /50x.html;
+        }
+
+        #browsers request for favicon
+        #let CloudFront serve it
+        location /favicon.ico {
+            return 301 ${FAVICON_URL};
+            expires 30d;
+        }
+
+        #NGINX must serve static, as Gunicorn will simply return 404
+        #use root to tell it where to start
+        location ^~ /static/ {
+            root /;
+            limit_req zone=static burst=${NGINX_BURST_HIGH} nodelay;
+            expires 5d;
+        }
+
+        location / {
+            proxy_pass http://main;
+            limit_req zone=default burst=${NGINX_BURST_HIGH} nodelay;
+        }
+
+        location /about {
+            proxy_pass http://main/$request_uri;
+            limit_req zone=default burst=${NGINX_BURST_MID} nodelay;
+        }
+
+        location ^~ /api/events/list/ {
+            proxy_pass http://main$request_uri;
+            limit_req zone=common_list_apis burst=${NGINX_BURST_MID} nodelay;
+        }
+
+        location ^~ /api/events/create/ {
+            proxy_pass http://main$request_uri;
+            limit_req zone=audio_file_lambda_compute_apis;
+        }
+
+        location = /api/events/replies/choices/list {
+            proxy_pass http://main$request_uri;
+            limit_req zone=moderate_compute_apis;
+        }
+        location ^~ /api/events/replies/ {
+            proxy_pass http://main$request_uri;
+            limit_req zone=moderate_compute_apis;
+        }
+        location ^~ /api/events/replies/create/ {
+            proxy_pass http://main$request_uri;
+            limit_req zone=audio_file_lambda_compute_apis;
+        }
+
+        location ^~ /api/events/get/ {
+            proxy_pass http://main$request_uri;
+            limit_req zone=common_get_apis;
+        }
+
+        location ^~ /api/audio-clips/processings/ {
+            proxy_pass http://main$request_uri;
+            limit_req zone=audio_clip_processings;
+        }
+
+        location = /api/audio-clips/reports {
+            proxy_pass http://main$request_uri;
+            limit_req zone=audio_clip_reports;
+        }
+        location = /api/audio-clips/tones/list {
+            proxy_pass http://main$request_uri;
+            limit_req zone=common_list_apis burst=${NGINX_BURST_LOW};
+        }
+        location = /api/audio-clips/likes-dislikes {
+            proxy_pass http://main$request_uri;
+            limit_req zone=light_compute_apis;
+            keepalive_timeout  10;
+        }
+
+        location ^~ /api/audio-clips/bans {
+            proxy_pass http://main$request_uri;
+            limit_req zone=common_list_apis burst=${NGINX_BURST_LOW};
+        }
+        location ^~ /api/audio-clips/delete {
+            proxy_pass http://main$request_uri;
+            limit_req zone=account_apis burst=${NGINX_BURST_LOW};
+        }
+
+        location = /api/users/blocks {
+            proxy_pass http://main$request_uri;
+            limit_req zone=common_list_apis burst=${NGINX_BURST_LOW};
+        }
+        location = /api/users/follows {
+            proxy_pass http://main$request_uri;
+            limit_req zone=common_list_apis burst=${NGINX_BURST_LOW};
+        }
+        location ^~ /api/users/ {
+            proxy_pass http://main$request_uri;
+            #no Auth header, as NGINX to Django would get 403, and we don't need it if not using Django's BasicAuthentication
+            proxy_set_header Authorization "";
+            limit_req zone=account_apis burst=${NGINX_BURST_LOW};
+        }
+        location ^~ /api/users/username/get/ {
+            proxy_pass http://main$request_uri;
+            limit_req zone=common_get_apis burst=${NGINX_BURST_HIGH};
+            keepalive_timeout  30;
+        }
+
+
+
+
+
+
+
+
+
+
+
+        # proxy the PHP scripts to Apache listening on 127.0.0.1:80
+        #
+        #location ~ \.php$ {
+        #    proxy_pass   http://127.0.0.1;
+        #}
+
+        # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+        #
+        #location ~ \.php$ {
+        #    root           html;
+        #    fastcgi_pass   127.0.0.1:9000;
+        #    fastcgi_index  index.php;
+        #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
+        #    include        fastcgi_params;
+        #}
+
+        # deny access to .htaccess files, if Apache's document root
+        # concurs with nginx's one
+        #
+        #location ~ /\.ht {
+        #    deny  all;
+        #}
+    }
+
+
+    # another virtual host using mix of IP-, name-, and port-based configuration
+    #
+    #server {
+    #    listen       8000;
+    #    listen       somename:8080;
+    #    server_name  somename  alias  another.alias;
+
+    #    location / {
+    #        root   html;
+    #        index  index.html index.htm;
+    #    }
+    #}
+
+
+    # HTTPS server
+    #
+    #server {
+    #    listen       443 ssl;
+    #    server_name  localhost;
+
+    #    ssl_certificate      cert.pem;
+    #    ssl_certificate_key  cert.key;
+
+    #    ssl_session_cache    shared:SSL:1m;
+    #    ssl_session_timeout  5m;
+
+    #    ssl_ciphers  HIGH:!aNULL:!MD5;
+    #    ssl_prefer_server_ciphers  on;
+
+    #    location / {
+    #        root   html;
+    #        index  index.html index.htm;
+    #    }
+    #}
+
+}
