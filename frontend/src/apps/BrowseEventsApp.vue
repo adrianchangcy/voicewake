@@ -395,6 +395,7 @@
                 is_logged_in: false,
                 is_superuser: false,
                 username: '',
+                user_profile_page_username: '',
 
                 //data-container
                 is_blocked: false,
@@ -679,7 +680,7 @@
                 if(this.isUserProfilePage === true){
 
                     //signature URL
-                    full_url += "/user" + "/" + this.username;
+                    full_url += "/user" + "/" + this.user_profile_page_username;
 
                 }else if(this.isUserLikesDislikesPage === true){
 
@@ -997,6 +998,12 @@
             this.is_superuser = isSuperuser();
             this.username = getUsername();
 
+            if(this.isUserProfilePage === true){
+
+                const container = (document.getElementById('data-container-get-user-profile') as HTMLElement);
+                this.user_profile_page_username = (container.getAttribute('data-username') as string);
+            }
+
             //reset store if not navigated from back/forward
             this.resetStores();
 
@@ -1020,31 +1027,33 @@
 
                     if(name === 'updatePlayingAudioClip'){
 
-                        //if playing_audio_clip is identical to selected_audio_clip,
-                        //it means that this $patch is fired from filter change
                         if(
                             this.filtered_events_store.getLastSelectedAudioClip !== null &&
                             this.vplayback_store.getPlayingAudioClip !== null &&
                             this.filtered_events_store.getLastSelectedAudioClip.id === this.vplayback_store.getPlayingAudioClip.id
                         ){
 
-                            //don't autoplay on filter change
+                            //old clip === new clip, don't autoplay
+                            //only possible when user switches filter for old-->new-->old
                             this.vplayback_store.autoplayOnChange(false);
-                            this.handleNewSelectedAudioClip(this.vplayback_store.getPlayingAudioClip);
 
                         }else{
 
-                            //not from filter change, can autoplay
+                            //all other cases can autoplay
                             this.vplayback_store.autoplayOnChange(true);
-                            this.handleNewSelectedAudioClip(this.vplayback_store.getPlayingAudioClip);
 
-                            this.filtered_events_store.updateLastSelectedAudioClip(
-                                this.vplayback_store.getPlayingAudioClip
-                            );
+                            if(this.vplayback_store.getPlayingAudioClip !== null){
+
+                                this.filtered_events_store.updateLastSelectedAudioClip(
+                                    this.vplayback_store.getPlayingAudioClip
+                                );
+                            }
                         }
+
+                        //call for scroll-related updates, will handle itself if null
+                        this.handleNewSelectedAudioClip(this.vplayback_store.getPlayingAudioClip);
                     }
                 });
-
             });
 
             //handle things on filter change
@@ -1069,12 +1078,19 @@
                         //always pause on filter change
                         this.vplayback_store.triggerPause();
 
-                        //restore last played audio clip from filter, if any
                         if(this.filtered_events_store.getLastSelectedAudioClip !== null){
 
+                            //restore last played audio clip from filter, if any
                             this.vplayback_store.updatePlayingAudioClip(
                                 this.filtered_events_store.getLastSelectedAudioClip
                             );
+
+                        }else{
+
+                            //no last played audio clip
+                            //update vplayback_store to None, teleport back to placeholder
+                            this.vplayback_store.updatePlayingAudioClip(null);
+                            this.handleNewVPlaybackTeleportId('#temporary-vplayback-teleport');
                         }
 
                         //get events on first page of filter change, if no events exist

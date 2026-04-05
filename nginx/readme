@@ -1,5 +1,51 @@
-#if first time, refer to default.conf.template for creating SSL files
+#dev
+    #for HTTPS with Vite, install openssl locally and generate dev-nginx-ssl.crt and dev-nginx-ssl.key
+        #tried to leave this in Dockerfile via multistage buildkit, but it is unreliable
+            #used to work, now it doesn't
+            #makes Dockerfile a mess to read
+#stage/prod
+    #for cloudflare, > SSL/TLS > origin server > create certificate > create your own .crt + .key > paste here > paste files to S3
+    #for AWS ALB, it will auto-generate and list at Route 53
 
 #useful commands:
     nginx -T
     nginx -T | grep worker_processes
+
+#dev openssl steps:
+    #download Git & Git Bash
+    #make sure you don't have .crt and .key at ./nginx
+        #having them may cause write permissions, i.e. empty file stays empty
+    #at VSCode, open terminal > press the "+v" for new Git Bash terminal (has openssl)
+    #copy command below and shift+insert:
+        export MSYS_NO_PATHCONV=1 && \
+        export MY_IPV4_LAN_ADDR=$(ipconfig.exe | grep 'IPv4 Address' | tail -n 1 | cut -d ':' -f2 | tr -d ' ') && \
+        openssl req -newkey rsa:4096 \
+            -x509 \
+            -sha256 \
+            -days 3650 \
+            -nodes \
+            -out "./nginx/dev-nginx-ssl.crt" \
+            -keyout "./nginx/dev-nginx-ssl.key" \
+            -subj "/C=MY/ST=Sarawak/L=Kuching/O=Security/OU=ITDepartment/CN=${MY_IPV4_LAN_ADDR}";
+    #command notes:
+        #to fix "subj format error" on Windows, use MSYS_NO_PATHCONV=1 to prevent Windows from treating subj as file path
+        #use ipconfig.exe to show our IPv4 addresses
+            #"tail -n 1" since our actual LAN IP is usually the last one
+        #openssl
+            #-newkey, rsa2048 is recommended to be ok until the year 2030, and should upgrade
+            #-x509, is type of cert
+            #-days, can use any positive integer, 36500 is 10 years
+            #-nodes, creates key without passphrase
+            #-out, specify any filename for created .crt
+            #-keyout, specify any filename for created .key
+            #-subj
+                #C=, two-letter ISO abbreviation
+                #ST=, state/province
+                #L=, city
+                #O=, name of organisation
+                #OU=, organisational unit
+                #CN=, full domain, can use wildcard if placed at leftmost but only once
+                    #e.g. "*.example.com" is valid, will also cover "xx.yy.example.com"
+                    #"*.*.example.com" is invalid
+                    #use 127.0.0.1 for normal dev HTTPS
+                    #use your LAN IP for other HTTPS devices in same LAN

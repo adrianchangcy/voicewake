@@ -129,12 +129,13 @@ jobs:
           AWS_LAMBDA_REGION_NAME: ${{ secrets.AWS_LAMBDA_REGION_NAME }}
           AWS_LAMBDA_NORMALISE_FUNCTION_NAME: ${{ secrets.AWS_LAMBDA_NORMALISE_FUNCTION_NAME }}
         run: |
-          python manage.py migrate
-          python manage.py test voicewake.tests.test_apis.Core_TestCase
-          python manage.py test voicewake.tests.test_apis.Users_TestCase
-          python manage.py test voicewake.tests.test_apis.Core_NormaliseAudioClips_TestCase
-          python manage.py test voicewake.tests.test_cronjobs.Core_TestCase
-          python manage.py test voicewake.tests.test_cronjobs.Core_TransactionTestCase
+          python manage.py migrate;
+          python manage.py test voicewake.tests.test_apis.Users_TestCase;
+          python manage.py test voicewake.tests.test_apis.Core_TestCase;
+          python manage.py test voicewake.tests.test_apis.Core_NormaliseAudioClips_TestCase;
+          python manage.py test voicewake.tests.test_cronjobs.Core_TestCase;
+          python manage.py test voicewake.tests.test_cronjobs.Core_TransactionTestCase;
+          python manage.py test voicewake.tests.test_services.HandleUserOTP_TestCase;
 
   #do push/repush before merged
   #stage and prod ECS will explicitly use specific tags, i.e. no conflict

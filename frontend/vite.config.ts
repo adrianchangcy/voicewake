@@ -109,7 +109,11 @@ export default defineConfig({
         //needed this for nginx <-> django + URL to vue dev
         //https://vite.dev/config/server-options#server-cors
         cors: {
-            origin: ['https://127.0.0.1:8080', 'https://192.168.1.200:8080'],
+            origin: [
+                'https://127.0.0.1:8080',
+                'https://192.168.1.200:8080',
+                'https://192.168.1.203:8080',
+            ],
         },
     },
     build: {
