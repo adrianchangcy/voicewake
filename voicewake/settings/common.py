@@ -6,6 +6,11 @@ import boto3
 
 
 
+#DJANGO_SETTINGS_MODULE
+#Django will auto-find this in env vars to decide which to use, i.e. dev/stage/prod.py at settings
+
+
+
 #find and load .env file
 #for local, we load .env file manually
 #for AWS, we specify stage.env or prod.env from S3, and the variables will be populated in
@@ -24,22 +29,25 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 #lazy but simple and effective solution, passed via context_processors.py
 #look into ManifestStaticFileStorage to automate this by adding hash to file names
 STATIC_CACHE_BUST_PREFIX = '?version='
-STATIC_CACHE_BUST_VERSION = STATIC_CACHE_BUST_PREFIX + '1.0.0'
+STATIC_CACHE_BUST_VERSION = os.environ.get('STATIC_CACHE_BUST_VERSION', '1.0.0')
+STATIC_CACHE_BUST_URL_APPEND = STATIC_CACHE_BUST_PREFIX + STATIC_CACHE_BUST_VERSION
 
 
-MAINTENANCE_MODE = int(os.environ['MAINTENANCE_MODE']) == 1
+MAINTENANCE_MODE = int(os.environ.get('MAINTENANCE_MODE', 0)) == 1
 
 
-IS_EC2 = int(os.environ['IS_EC2']) == 1
+#this dictates if secrets should be explicit at boto3 args, since AWS services will autofill when omitted
+IS_EC2 = int(os.environ.get('IS_EC2', 0)) == 1
 
 
-# SECURITY WARNING: keep the secret key used in production secret!
+#SECURITY WARNING: keep the secret key used in production secret
 #must use fixed SECRET_KEY for Django to sign session cookies
 #else if always using new SECRET_KEY, it would kill all existing sessions
 SECRET_KEY = os.environ['SECRET_KEY']
 
 
 #assuming your env var is as so: ALLOWED_HOSTS=domain.com,anotherdomain.com
+#dev is "*", but don't use as default, in case lacking .env in prod makes this disastrous
 ALLOWED_HOSTS = os.environ['ALLOWED_HOSTS'].split(",")
 
 
@@ -124,22 +132,35 @@ INSTALLED_APPS = [
 ]
 
 
+#AWS S3
+AWS_S3_ACCESS_KEY_ID = ''.join(os.environ['AWS_S3_ACCESS_KEY_ID'].split())
+AWS_S3_SECRET_ACCESS_KEY = ''.join(os.environ['AWS_S3_SECRET_ACCESS_KEY'].split())
+AWS_S3_REGION_NAME = ''.join(os.environ['AWS_S3_REGION_NAME'].split())
+AWS_S3_CUSTOM_DOMAIN = ''.join(os.environ['AWS_S3_CUSTOM_DOMAIN'].split())
+AWS_S3_STATIC_BUCKET_NAME = ''.join(os.environ['AWS_S3_STATIC_BUCKET_NAME'].split())
+AWS_S3_MEDIA_BUCKET_NAME = ''.join(os.environ['AWS_S3_MEDIA_BUCKET_NAME'].split())
+AWS_S3_UGC_UNPROCESSED_BUCKET_NAME = ''.join(os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'].split())
+
+
+#AWS Lambda
+AWS_LAMBDA_ACCESS_KEY_ID = ''.join(os.environ['AWS_LAMBDA_ACCESS_KEY_ID'].split())
+AWS_LAMBDA_SECRET_ACCESS_KEY = ''.join(os.environ['AWS_LAMBDA_SECRET_ACCESS_KEY'].split())
+AWS_LAMBDA_REGION_NAME = ''.join(os.environ['AWS_LAMBDA_REGION_NAME'].split())
+AWS_LAMBDA_NORMALISE_FUNCTION_NAME = ''.join(os.environ['AWS_LAMBDA_NORMALISE_FUNCTION_NAME'].split())
+
+
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
-    'http://127.0.0.1:8000',
-    'http://127.0.0.1:8080',
-    'http://192.168.1.200:8080',
+    'http://127.0.0.1',
     'https://voicewake.com',
     'https://stage.voicewake.com',
-    'https://' + os.environ['AWS_S3_CUSTOM_DOMAIN'],
+    'https://' + AWS_S3_CUSTOM_DOMAIN,
 ]
 
 
 CSRF_TRUSTED_ORIGINS = [
-    'http://127.0.0.1:8000',
-    'http://127.0.0.1:8080',
-    'http://192.168.1.200:8080',
+    'http://127.0.0.1',
     'https://voicewake.com',
     'https://stage.voicewake.com',
 ]
@@ -170,7 +191,7 @@ LOGGING = {
 
 #logging specification
 #note that logging to CloudWatch is not immediate, since there seems to be around a minute of delay
-USE_CLOUDWATCH = int(os.environ['USE_CLOUDWATCH']) == 1
+USE_CLOUDWATCH = int(os.environ.get('USE_CLOUDWATCH', 0)) == 1
 AWS_LOG_CLIENT = None
 
 if USE_CLOUDWATCH is True:
@@ -179,16 +200,16 @@ if USE_CLOUDWATCH is True:
 
         AWS_LOG_CLIENT = boto3.client(
             service_name='logs',
-            region_name=os.environ['AWS_CLOUDWATCH_REGION_NAME'],
+            region_name=''.join(os.environ['AWS_CLOUDWATCH_REGION_NAME'].split()),
         )
 
     else:
 
         AWS_LOG_CLIENT = boto3.client(
             service_name='logs',
-            aws_access_key_id=os.environ['AWS_CLOUDWATCH_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['AWS_CLOUDWATCH_SECRET_ACCESS_KEY'],
-            region_name=os.environ['AWS_CLOUDWATCH_REGION_NAME'],
+            aws_access_key_id=''.join(os.environ['AWS_CLOUDWATCH_ACCESS_KEY_ID'].split()),
+            aws_secret_access_key=''.join(os.environ['AWS_CLOUDWATCH_SECRET_ACCESS_KEY'].split()),
+            region_name=''.join(os.environ['AWS_CLOUDWATCH_REGION_NAME'].split()),
         )
 
     LOGGING['handlers'].update({
@@ -196,7 +217,7 @@ if USE_CLOUDWATCH is True:
             'level': 'ERROR',
             'class': 'watchtower.CloudWatchLogHandler',
             'boto3_client': AWS_LOG_CLIENT,
-            'log_group': os.environ['AWS_CLOUDWATCH_LOG_GROUP'],
+            'log_group': ''.join(os.environ['AWS_CLOUDWATCH_LOG_GROUP'].split()),
             #can use different stream_name for each environment if needed
             'stream_name': f'logs',
             'formatter': 'verbose',
@@ -382,8 +403,9 @@ CHANNEL_LAYERS = {}
 
 
 #lockdown to keep site private
-LOCKDOWN_ENABLED = int(os.environ['LOCKDOWN_ENABLED']) == 1
-LOCKDOWN_PASSWORDS = (os.environ.get('LOCKDOWN_PASSWORD', ''),)
+#if-else for LOCKDOWN_PASSWORDS is better than always '' for default, i.e. when in lockdown but accidentally no password
+LOCKDOWN_ENABLED = int(os.environ.get('LOCKDOWN_ENABLED', 0)) == 1
+LOCKDOWN_PASSWORDS = ('',) if LOCKDOWN_ENABLED == 0 else (os.environ['LOCKDOWN_PASSWORD'],)
 
 
 #REDIS CACHE
@@ -400,11 +422,15 @@ CACHES = {
 
 
 #how long the audio clip processing updates should stay on Redis
-REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S=int(os.environ['REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S'])
+REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S = int(
+    os.environ.get('REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S', 691200)
+)
 
 
 #how long from last sync to db before new sync is needed
-REDIS_AUDIO_CLIP_PROCESSING_CACHE_LAST_SYNC_FROM_DB_MIN_S = int(os.environ['REDIS_AUDIO_CLIP_PROCESSING_CACHE_LAST_SYNC_FROM_DB_MIN_S'])
+REDIS_AUDIO_CLIP_PROCESSING_CACHE_LAST_SYNC_FROM_DB_MIN_S = int(
+    os.environ.get('REDIS_AUDIO_CLIP_PROCESSING_CACHE_LAST_SYNC_FROM_DB_MIN_S', 600)
+)
 
 
 #if file uploaded to Django server is below this, store in memory, else disk
@@ -422,9 +448,17 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000   #4.77mb
         #however, the file type that end-user has, cannot be enforced, e.g. ".wav" uploading to ".mp3" key
 AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS = ['webm',]
 AUDIO_CLIP_UNPROCESSED_EXPIRY_S = 3600  #1 hour
+AWS_S3_AUDIO_FILE_MAX_SIZE_B = int(os.environ.get('AWS_S3_AUDIO_FILE_MAX_SIZE_B', 2700000))
+AWS_S3_UPLOAD_URL_EXPIRY_S = int(os.environ.get('AWS_S3_UPLOAD_URL_EXPIRY_S', 600))
+
+
+#PROCESSING
 AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS = 5
+AWS_LAMBDA_NORMALISE_TIMEOUT_S = int(os.environ.get('AWS_LAMBDA_NORMALISE_TIMEOUT_S', 60))
+AUDIO_CLIP_PROCESSED_FILE_EXTENSION = os.environ.get('AUDIO_CLIP_PROCESSED_FILE_EXTENSION', 'mp3')
 
 
+#BROWSE
 GENERAL_ROW_QUANTITY_PER_PAGE = 20
 
 
@@ -441,10 +475,10 @@ EVENT_INCOMPLETE_QUEUE_MAX_AGE_S = 302400   #3 days 12 hours
 #EMAIL
 #ports 465 (SSL), 587 (TLS, recommended)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.environ['AWS_SES_HOST']
-EMAIL_HOST_USER = os.environ['AWS_SES_SMTP_USER_NAME']
-EMAIL_HOST_PASSWORD = os.environ['AWS_SES_SMTP_PASSWORD']
-DEFAULT_FROM_EMAIL = os.environ['AWS_SES_FROM_EMAIL']
+EMAIL_HOST = ''.join(os.environ['AWS_SES_HOST'].split())
+EMAIL_HOST_USER = ''.join(os.environ['AWS_SES_SMTP_USER_NAME'].split())
+EMAIL_HOST_PASSWORD = ''.join(os.environ['AWS_SES_SMTP_PASSWORD'].split())
+DEFAULT_FROM_EMAIL = ''.join(os.environ['AWS_SES_FROM_EMAIL'].split())
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 
@@ -497,8 +531,8 @@ UNREGISTERED_USERS_DELETE_LIMIT = 100
 
 
 #PERFORMANCE
-BULK_CREATE_BATCH_SIZE = int(os.environ['BULK_CREATE_BATCH_SIZE'])
-BULK_UPDATE_BATCH_SIZE = int(os.environ['BULK_UPDATE_BATCH_SIZE'])
+BULK_CREATE_BATCH_SIZE = int(os.environ.get('BULK_CREATE_BATCH_SIZE', 100))
+BULK_UPDATE_BATCH_SIZE = int(os.environ.get('BULK_UPDATE_BATCH_SIZE', 100))
 
 
 #CELERY

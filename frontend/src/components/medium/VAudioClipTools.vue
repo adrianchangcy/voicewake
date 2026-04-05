@@ -754,6 +754,8 @@
                         text: error_text,
                     }, 3000);
 
+                    throw error;
+
                 }).finally(() => {
 
                     this.is_banning = false;
