@@ -5,6 +5,7 @@ name: vw_dev
 services:
   postgres:
     image: postgres:latest
+    platform: "linux/amd64"
     ports:
       #using 5432+n for host port (left) in case you already have 5432 occupied by direct postgres installation on localhost machine
       - "5433:5432"
@@ -40,6 +41,7 @@ services:
     image: redis:latest
     #if always restart, then when a service has error/ends, it will restart again
     # restart: always
+    platform: "linux/amd64"
     ports:
       - "6379:6379"
     # volumes:
@@ -57,6 +59,7 @@ services:
       - backend
 
   django_runserver:
+    tty: true
     build:
       context: .
       dockerfile: ./voicewake/docker/service-django-runserver.dockerfile
@@ -73,6 +76,7 @@ services:
     restart: unless-stopped
     env_file:
       - /env/.env
+    platform: "linux/amd64"
     ports:
       #map port on host to port on container
       - "8000:8000"
@@ -86,6 +90,7 @@ services:
     #no need healthcheck for runserver if we have django_runserver.py
 
   django_gunicorn:
+    tty: true
     build:
       #. because it relies on files like manage.py
       context: .
@@ -100,6 +105,7 @@ services:
     # restart: always
     env_file:
       - /env/.env
+    platform: "linux/amd64"
     ports:
       #map port on host to port on container
       - "5000:5000"
@@ -133,8 +139,9 @@ services:
     # restart: always
     env_file:
       - /env/.env
+    platform: "linux/amd64"
     ports:
-      #based on django_runserver/django_gunicorn
+      #this can be anything, since communication with django is using redis as broker via settings.CELERY_BROKER_URL
       - "8001:8001"
     depends_on:
       django_runserver:
@@ -168,8 +175,9 @@ services:
     # restart: always
     env_file:
       - /env/.env
+    platform: "linux/amd64"
     ports:
-      #based on django_runserver/django_gunicorn
+      #this can be anything, since communication with django is using redis as broker via settings.CELERY_BROKER_URL
       - "8002:8002"
     depends_on:
       django_runserver:
@@ -188,19 +196,15 @@ services:
     networks:
       - backend
 
+  #remember to run the command at Dockerfile to have SSL files ready
   nginx:
     build:
       context: .
       dockerfile: ./nginx/Dockerfile
-    environment:
-      #runserver
-      - DJANGO_SERVICE_NAME=django_runserver
-      - DJANGO_PORT=8000
-      #gunicorn
-      # - DJANGO_SERVICE_NAME=django_gunicorn
-      # - DJANGO_PORT=5000
-      #favicon
-      - FAVICON_URL=https://d3fpcqa3tewpp.cloudfront.net/static/voicewake/favicon.svg
+    env_file:
+      - ./env/.env
+      #expecting env vars at runtime: DJANGO_SERVICE_NAME, DJANGO_PORT, FAVICON_URL
+    platform: "linux/amd64"
     ports:
       - "8080:8080"
     volumes:
@@ -213,6 +217,12 @@ services:
       - type: bind
         source: ./nginx/default.conf.template
         target: /etc/nginx/templates/default.conf.template
+      - type: bind
+        source: ./nginx/dev-nginx-ssl.crt
+        target: /etc/nginx/dev-nginx-ssl.crt
+      - type: bind
+        source: ./nginx/dev-nginx-ssl.key
+        target: /etc/nginx/dev-nginx-ssl.key
     depends_on:
       django_runserver:
         condition: service_healthy
@@ -244,6 +254,9 @@ services:
       - type: bind
         source: ./frontend
         target: /frontend
+      - type: bind
+        source: ./nginx
+        target: /nginx
       # - type: bind
       #   source: ./voicewake
       #   target: /voicewake
@@ -252,6 +265,7 @@ services:
       #   target: /tailwind.config.js
       #in container, specify the folder we want to ignore from bind-mount
       - /frontend/node_modules
+    platform: "linux/amd64"
     ports:
       - "${VITE_PORT}:${VITE_PORT}"
     environment: 
@@ -269,24 +283,23 @@ services:
     build:
       context: .
       dockerfile: ./service-tailwind.dockerfile
-    ports:
-      - "3000:3000"
+    platform: "linux/amd64"
     #we use bind mount between host files and container files for two-way sync
     volumes:
       - type: bind
         source: ./static
-        target: /static
+        target: /usr/app/static
       - type: bind
         source: ./voicewake
-        target: /voicewake
+        target: /usr/app/voicewake
       - type: bind
         source: ./frontend
-        target: /frontend
+        target: /usr/app/frontend
       - type: bind
         source: ./tailwind.config.js
-        target: /tailwind.config.js
+        target: /usr/app/tailwind.config.js
       #in container, specify the folder we want to ignore from bind-mount
-      - /frontend/node_modules
+      - /usr/app/node_modules
     restart: unless-stopped
 
   #empty container to update packages, and allows for testing of installation itself

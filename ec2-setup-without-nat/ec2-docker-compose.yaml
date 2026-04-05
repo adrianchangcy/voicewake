@@ -1,0 +1,209 @@
+#in compose.yaml, things such as "command" and "entrypoint" will override things like CMD and ENTRYPOINT at .dockerfile
+  #therefore, it's best to resort to .dockerfile and entrypoint.sh before placing such things here
+#.dockerignore is expected to be at root directory of build context, i.e. where you are running "docker build" from
+
+#expecting env vars at runtime for this .yaml, referring to .github/workflows/main.yaml at docker_build_tag_push_to_ecr final step:
+  # AWS_ECR_DOCKER_COMPOSE_NAME: vw
+  # AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
+  # AWS_ECR_REGION_NAME: ${{ secrets.AWS_ECR_REGION_NAME }}
+  #manually define this so you have version control:
+  # AWS_ECR_EC2_IMAGE_TAG: ${{ github.event.pull_request.number }}
+
+#important usage of ports
+  #if ALB to monitor requests -> ECS + separate EC2 per container, then for each container, bind host port to container port
+    #some_service:
+      #ports:
+        #- "host_port:container_port"
+  #if 1 public exposed EC2 for all containers -> nginx+SSL inside, only let nginx bind to port, and use EXPOSE for other containers
+    #EXPOSE only specifies port to use in shared docker internal network
+    #not binding to host port means no exposed area for attacks
+    #nginx:
+      #ports:
+        #- "443:8080"
+    #other_service:
+      #expose:
+        #- "5432"
+
+name: vw
+services:
+  #for EC2 postgres, we will run psql on host machine
+    #pg_backrest needs to stop psql to restore, but stopping postgres in container means stopping entire container
+    #easier to maintain, no added layers that would increase latency
+
+  #using own redis instead of AWS Elasticache to save cost
+  #reliability from AWES Elasticache is not as important yet, due to low traffic and implementation at code on Redis downtime
+  redis:
+    image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${AWS_ECR_DOCKER_COMPOSE_NAME}/redis:${AWS_ECR_EC2_IMAGE_TAG}"
+    expose:
+      - "6379"
+    env_file:
+      #provide absolute path to .env, since docker is executed at different location
+      - /home/ec2-user/.env
+    restart: unless-stopped
+    healthcheck:
+      #even when loading, Redis can still return exit code 0, so to be sure it's ready, expect "PONG"
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    pids_limit: 100
+    mem_limit: 100m
+    cpus: 0.2
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "2"
+    networks:
+      - backend
+
+  django_gunicorn:
+    image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${AWS_ECR_DOCKER_COMPOSE_NAME}/django_gunicorn:${AWS_ECR_EC2_IMAGE_TAG}"
+    expose:
+      - "5000"
+    env_file:
+      #provide absolute path to .env, since docker is executed at different location
+      - /home/ec2-user/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: curl --fail http://127.0.0.1:5000 || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    pids_limit: 100
+    #couldn't do 300m, it would crash with a simple "killed" message
+    mem_limit: 500m
+    cpus: 0.3
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "2"
+    networks:
+      - backend
+    extra_hosts:
+      #check docker's default ip range, typically 172.17.0.0/16:
+        #ip addr show docker0
+      #then use the first address of it, typically 172.17.0.1 for container to reach host machine's psql
+      - "myhost:172.17.0.1"
+
+  django_celery_worker:
+    image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${AWS_ECR_DOCKER_COMPOSE_NAME}/django_celery_worker:${AWS_ECR_EC2_IMAGE_TAG}"
+    expose:
+      - "8001"
+    env_file:
+      #provide absolute path to .env, since docker is executed at different location
+      - /home/ec2-user/.env
+    depends_on:
+      django_gunicorn:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: celery -A voicewake status || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    pids_limit: 100
+    #mem_limit minimum 300m, else killed via code 137 for exceeding memory
+    mem_limit: 300m
+    cpus: 0.2
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "2"
+    networks:
+      - backend
+    extra_hosts:
+      #needs connection to db
+      - "myhost:172.17.0.1"
+
+  django_celery_beat:
+    image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${AWS_ECR_DOCKER_COMPOSE_NAME}/django_celery_beat:${AWS_ECR_EC2_IMAGE_TAG}"
+    expose:
+      - "8002"
+    env_file:
+      #provide absolute path to .env, since docker is executed at different location
+      - /home/ec2-user/.env
+    depends_on:
+      django_gunicorn:
+        condition: service_healthy
+      django_celery_worker:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: python manage.py shell -c "from voicewake.services import do_celery_beat_healthcheck; do_celery_beat_healthcheck();"
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 80s
+    pids_limit: 100
+    #mem_limit minimum 300m too
+    mem_limit: 300m
+    cpus: 0.2
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "2"
+    networks:
+      - backend
+    extra_hosts:
+      #needs connection to db
+      - "myhost:172.17.0.1"
+
+  nginx:
+    #expecting env vars at runtime: DJANGO_SERVICE_NAME, DJANGO_PORT, FAVICON_URL
+    image: "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/${AWS_ECR_DOCKER_COMPOSE_NAME}/nginx:${AWS_ECR_EC2_IMAGE_TAG}"
+    ports:
+      #DNS can only resolve 80 and 443 requests
+      - "443:8080"
+    env_file:
+      #provide absolute path to .env, since docker is executed at different location
+      - /home/ec2-user/.env
+    volumes:
+      - type: bind
+        source: ./${NGINX_SSL_FILE_NAME}.crt
+        target: /etc/nginx/${NGINX_SSL_FILE_NAME}.crt
+      - type: bind
+        source: ./${NGINX_SSL_FILE_NAME}.key
+        target: /etc/nginx/${NGINX_SSL_FILE_NAME}.key
+    depends_on:
+      django_gunicorn:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      #NGINX will also fail if any upstream isn't responding, i.e. Django
+      #force exit 1 if nginx status fails
+      test: service nginx status || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    pids_limit: 100
+    mem_limit: 200m
+    cpus: 0.2
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "2"
+    networks:
+      - backend
+
+volumes:
+  static:
+    #leave empty to use the container engine's default configuration for creating a volume
+networks:
+  backend:
+    #this driver (bridge) is default when not explicitly defined here
+    driver: bridge
+
+

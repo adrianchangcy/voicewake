@@ -147,3 +147,21 @@ GitHub.sublime-settings
 !.vscode/launch.json 
 !.vscode/extensions.json 
 .history
+
+#SSL
+*.crt
+*.key
+
+#track in /ec2-setup-without-nat
+!/ec2-setup-without-nat/live-ec2-docker-compose.yaml
+!/ec2-setup-without-nat/live-ec2-setup.sh
+!/ec2-setup-without-nat/local-create-offline-repo.sh
+!/ec2-setup-without-nat/pg_hba.conf
+!/ec2-setup-without-nat/postgresql.conf
+!/ec2-setup-without-nat/jail.local
+
+#ignore in /ec2-setup-without-nat
+/ec2-setup-without-nat/docker-compose
+/ec2-setup-without-nat/*.tar.gz
+/ec2-setup-without-nat/*.crt
+/ec2-setup-without-nat/*.key

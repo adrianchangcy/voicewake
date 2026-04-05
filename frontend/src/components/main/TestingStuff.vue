@@ -1,5 +1,6 @@
 <template>
-    <div class="flex flex-col gap-8 pt-20">
+    <div class="flex flex-col gap-8 pt-20 bg-red-100">
+        haha
     <!-- <FontAwesomeIcon icon="fas fa-comments"/> -->
 
 
