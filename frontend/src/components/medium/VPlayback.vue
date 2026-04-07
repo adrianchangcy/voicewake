@@ -206,9 +206,9 @@
                                     'flex w-full h-full relative transition-transform'
                                 ]"
                             >
-                                <FontAwesomeIcon v-show="isMuted" icon="fas fa-volume-xmark" class="absolute w-0 h-0 inset-0 m-auto"/>
-                                <FontAwesomeIcon v-show="isLowVolume" icon="fas fa-volume-low" class="absolute w-0 h-0 inset-0 m-auto"/>
-                                <FontAwesomeIcon v-show="isHighVolume" icon="fas fa-volume-high" class="absolute w-0 h-0 inset-0 m-auto"/>
+                                <FontAwesomeIcon v-show="isMuted" icon="fas fa-volume-xmark" class="absolute inset-0 m-auto"/>
+                                <FontAwesomeIcon v-show="isLowVolume" icon="fas fa-volume-low" class="absolute inset-0 m-auto"/>
+                                <FontAwesomeIcon v-show="isHighVolume" icon="fas fa-volume-high" class="absolute inset-0 m-auto"/>
                             </div>
 
                             <span v-show="isMuted" class="sr-only">

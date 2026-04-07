@@ -18,7 +18,7 @@
         ]"
         :disabled="!propIsEnabled"
     >
-        <div class="w-full h-full flex items-center pretty-font">
+        <div class="w-full h-full flex items-center">
             <slot></slot>
         </div>
     </component>
