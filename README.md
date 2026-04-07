@@ -54,7 +54,9 @@ There is a market gap for offline audio interaction between strangers. We have W
 - have your URL resolve to ALB's public IP
 - at security group's inbound/outbound rules, allow only traffic from ALB
 - no need to manually create any SSL files
-- this is 100% the best way to go if you can afford it
+- this strictly follows security best practices for a production environment
+- can be too expensive for a tiny project
+- can be overkill for a project with 99% static files
 <img src="https://github.com/user-attachments/assets/decd4446-b486-46d1-ac2e-63ca2ee58673" style="width: 100%; height: auto; display: block;">
 
 ### Option B (EC2 or VPS)
