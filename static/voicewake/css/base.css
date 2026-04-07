@@ -1,4 +1,5 @@
 /*put these here so tailwind can listen*/
+@config "../../../tailwind.config.js";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
