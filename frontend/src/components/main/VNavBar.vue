@@ -1,5 +1,5 @@
 <template>
-    <div class="h-full pretty-font">
+    <div class="h-full">
 
         <!--main nav-->
         <!--px-5 to align with main content-->

@@ -19,7 +19,7 @@
         :disabled="!propIsEnabled"
     >
         <!--current font sinks too low, hence pb-->
-        <div class="w-full h-full flex items-center pretty-font">
+        <div class="w-full h-full flex items-center">
             <slot></slot>
         </div>
     </component>

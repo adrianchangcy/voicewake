@@ -4,7 +4,7 @@
             <span>{{ propLabelText }}</span>
         </VInputLabel>
         <!--pattern attribute does not help-->
-        <div class="number-slot-field h-10 flex flex-row items-center gap-1 text-lg pretty-font">
+        <div class="number-slot-field h-10 flex flex-row items-center gap-1 text-lg">
             <input
                 :id="propElementId"
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
