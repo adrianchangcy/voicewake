@@ -154,29 +154,39 @@ Solutions:
 
 Tradeoffs:
 - complexity introduces onboarding challenges for future developers, on top of the fact that not everyone likes raw queries
-- setting up mock data for thorough testing is highly complex (intentional absent data, predictable earliest/middle/latest positions of rows across an entire table, etc.)
-- careful limitation of data during test case setup to mitigate O(n^2), since filter selection types is the main combination factor
+- setting up mock data for thorough testing is complex (intentional absent data, predictable earliest/middle/latest positions of rows across an entire table, etc.)
+- careful limitation of data during test case setup to mitigate O(n^2), since filter selection types create combinations
 - complex test suite, must use nested for-loops to generate test cases, and implement test case index tracking
 - added complexity of introducing true multithreading to scale CPU-bound test loads via "multiprocessing" package (not "theading")
 
 ### 2.2.3  Content moderation
 
 Issues:
-- preferring hands-off approach 
+- nature of user-generated content
+- no moderators
+
 Solutions:
+- superuser can delete audio clips and ban users directly
+- users can report other audio clips
+- cronjob will evaluate reported audio clips
+
 Tradeoffs:
+- no room for nuanced judgment
+- easy to manipulate
+- currently the best compromise for tiny userbase
+
+## Database
+To save costs and match the tiny userbase, I chose  host PSQL as a container in EC2 along with the other services. EC2 will have pgbackrest for automatic incremental backup to S3. I'm fully aware that databases are critical aspects that should be hosted on managed services like AWS RDS.
+
+## AWS
+To save development time and simplify project scopes, these AWS services (Lambda, S3, SES, CloudFront) are directly implemented for dev/stage/prod. This means that there are no "local machine" versions for file and email handling.
+
+## CI/CD with Github Actions
+- uses OIDC for AWS credentials as part of best security practice in preventing long-lived secrets
+- on branch pull request to main, it will run tests, build Docker images and deploy to stage and prod ECR, do Vite bundling and upload to stage S3
+- on success and merge, it will run tests, do Vite bundling and upload to prod S3
 
 
-        Raw queries for front page
-        Audio clip features
-        Cronjobs
-        Content moderation
-    Database
-        3NF, b-tree indexes, composite indexes
-    AWS
-        Lambda, S3, CloudFront, SES
-    CI/CD
-        Github Actions
 
 
 
