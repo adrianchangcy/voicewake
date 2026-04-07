@@ -78,7 +78,7 @@ There is a market gap for offline audio interaction between strangers. We have W
 
 ## 3.2 Backend
 ### 3.2.1 Separation of tests
-#### Problem
+#### Issue
 - Django's default testing behaviour is to auto-create test db, then destroy it after the tests
 - you can persist the test db, but it's only seamless enough for test-and-check steps
 #### Solution
