@@ -1,26 +1,8 @@
 # voicewake.com
 A queue-based audio social media website where two users can match and complete an event to be shown on the front page.
 
-order (uppercases):
-1motivation
-2features
-3architecture (put all charts and diagrams here, including CI/CD)
-3system infrastructure (cloud setup)
-3data model (abstracted ERD)
-3system logic (sequence/flow)
-4engineering insights (challenges & solutions)
-4tool evaluation
-5local setup
-6tests
-7deployment
-8future improvements (feature + (why not done))
-7credits
-7licenses
 
-
-
-
-# 1. Motivation
+# Motivation
 
 There is a market gap for offline audio interaction between strangers. We have WhatsApp, Facebook, Omegle, but there is no popular solution that mixes their strengths.
 
@@ -30,7 +12,7 @@ Overall, it was a balance between project planning, system design, and learning 
 
 
 
-# 2. Features
+# Features
 - passwordless login via time-based one-time password (TOTP) sent to email
 - event creation by being the first to upload an audio clip
 - time-based queue to match responders to reply and complete an event
@@ -41,9 +23,60 @@ Overall, it was a balance between project planning, system design, and learning 
 
 
 
-# 3. Architecture
+- [1. Architecture](#1-architecture)
+  - [1.1 System Infrastructure](#11-system-infrastructure)
+    - [Option A: Fully Cloud-Native Services](#option-a-fully-cloud-native-services)
+    - [Option B: EC2 or VPS with Minor Cloud Services](#option-b-ec2-or-vps-with-minor-cloud-services)
+  - [1.2 Data Model (Abstracted ERD)](#12-data-model-abstracted-erd)
+  - [1.3 System Logic (Sequence/Flow)](#13-system-logic-sequenceflow)
+    - [Login](#login)
+    - [Create Event](#create-event)
+    - [Reply](#reply)
+- [2. Engineering Insights (Challenges \& Solutions)](#2-engineering-insights-challenges--solutions)
+  - [2.1 Frontend](#21-frontend)
+    - [2.1.1 Performant Infinite Scrolling](#211-performant-infinite-scrolling)
+    - [2.1.2 Data Management for Infinite Content](#212-data-management-for-infinite-content)
+    - [2.1.3 Custom Playback Component](#213-custom-playback-component)
+    - [2.1.4 Countdown with Worker()](#214-countdown-with-worker)
+  - [2.2 Backend](#22-backend)
+    - [2.2.1 Passwordless Email TOTP Login](#221-passwordless-email-totp-login)
+    - [2.2.2 Filter-Based and Cursor-Based Pagination](#222-filter-based-and-cursor-based-pagination)
+    - [2.2.3 Normalisation](#223-normalisation)
+    - [2.2.4 Content Moderation](#224-content-moderation)
+    - [2.2.5 Likes and Dislikes](#225-likes-and-dislikes)
+  - [2.3 Tools Evaluation](#23-tools-evaluation)
+- [3. Local Setup](#3-local-setup)
+  - [3.1 Prerequisites](#31-prerequisites)
+    - [Static LAN IP](#static-lan-ip)
+    - [SSL](#ssl)
+    - [AWS](#aws)
+    - [CI/CD](#cicd)
+    - [.env](#env)
+    - [Logging](#logging)
+    - [.devcontainer (optional)](#devcontainer-optional)
+  - [3.2 Run Docker containers](#32-run-docker-containers)
+- [4. Tests](#4-tests)
+  - [4.1 Frontend](#41-frontend)
+  - [4.2 Backend](#42-backend)
+    - [Database Separation for Different Tests](#database-separation-for-different-tests)
+      - [Issue](#issue)
+      - [Solution](#solution)
+    - [4.2.1 Prepare persistent db data for TestRunnerWithMirror](#421-prepare-persistent-db-data-for-testrunnerwithmirror)
+    - [4.2.2 90% test coverage for unit and integration tests](#422-90-test-coverage-for-unit-and-integration-tests)
+    - [4.2.3 Sub-150ms query time for performance tests](#423-sub-150ms-query-time-for-performance-tests)
+- [5. Deployment](#5-deployment)
+  - [Option A: Fully Cloud-Native Services](#option-a-fully-cloud-native-services-1)
+  - [Option B: EC2 or VPS with Minor Cloud Services](#option-b-ec2-or-vps-with-minor-cloud-services-1)
+- [6. Future Improvements](#6-future-improvements)
+- [7. Credits](#7-credits)
+- [8. License](#8-license)
+- [9. Contributions \& Forking](#9-contributions--forking)
 
-## 3.1 System Infrastructure
+
+
+# 1. Architecture
+
+## 1.1 System Infrastructure
 
 ### Option A: Fully Cloud-Native Services
 <img src="https://github.com/user-attachments/assets/decd4446-b486-46d1-ac2e-63ca2ee58673" style="width: 100%; height: auto; display: block;">
@@ -51,10 +84,10 @@ Overall, it was a balance between project planning, system design, and learning 
 ### Option B: EC2 or VPS with Minor Cloud Services
 <img src="https://github.com/user-attachments/assets/477d4ebb-27eb-45cc-bd85-cc092106799f" style="width: 100%; height: auto; display: block;">
 
-## 3.2 Data Model (Abstracted ERD)
+## 1.2 Data Model (Abstracted ERD)
 <img src="https://github.com/user-attachments/assets/ec295dbc-6fda-45de-a895-5db2e815f4b2" style="width: 100%; height: auto; display: block;">
 
-## 3.3 System Logic (Sequence/Flow)
+## 1.3 System Logic (Sequence/Flow)
 
 ### Login
 <img src="https://github.com/user-attachments/assets/a182c63d-7b69-494e-be02-47498d1035cf" style="width: 100%; height: auto; display: block;">
@@ -67,11 +100,11 @@ Overall, it was a balance between project planning, system design, and learning 
 
 
 
-# 4. Engineering Insights (Challenges & Solutions)
+# 2. Engineering Insights (Challenges & Solutions)
 
-## 4.1 Frontend
+## 2.1 Frontend
 
-### 4.1.1 Performant Infinite Scrolling
+### 2.1.1 Performant Infinite Scrolling
 
 Challenges:
 - high UI lag when combining scrolling and hundreds of HTML elements
@@ -87,7 +120,7 @@ Tradeoffs:
 - minimal, since vue-virtual-scroller is well-developed
 - some time cost required for learning HTML Canvas and its quirks
 
-### 4.1.2 Data Management for Infinite Content
+### 2.1.2 Data Management for Infinite Content
 
 Challenges:
 - redundant refetch of content via selection of previous filters
@@ -103,7 +136,7 @@ Tradeoffs:
 - still vulnerable to memory or localStorage overload if scrolling forever
 - shelved the concern above due to high threshold (around 1kb per event) and reality of minimal content on live launch
 
-### 4.1.3 Custom Playback Component
+### 2.1.3 Custom Playback Component
 
 Challenges:
 - HTML audio playback animation isn't smooth
@@ -127,7 +160,7 @@ Tradeoffs:
 - significant time cost is unavoidable
 - compounding code complexity when addressing HTML issues along with bugs from extra libraries used (Animejs)
 
-### 4.1.4 Countdown with Worker()
+### 2.1.4 Countdown with Worker()
 
 Challenges:
 - when the user switches browser tabs, the main thread for the website is paused, affecting setInterval()
@@ -149,9 +182,9 @@ Tradeoffs:
 - this complexity remains isolated to the frontend and Vite, allowing for no special attention in other areas (backend/AWS/etc.)
 - NGINX will match "/static/..." directory requests to CloudFront
 
-## 4.2 Backend
+## 2.2 Backend
 
-### 4.2.1 Passwordless Email TOTP Login
+### 2.2.1 Passwordless Email TOTP Login
 
 Challenges:
 - conventional passwords are hard to remember
@@ -170,7 +203,7 @@ Tradeoffs:
 - HTML for email is notoriously difficult to work with
 - requires third-party email service (AWS SES) to sign emails via DomainKeys Identified Mail (DKIM), so they don't end up in spam folder
 
-### 4.2.2 Filter-Based and Cursor-Based Pagination
+### 2.2.2 Filter-Based and Cursor-Based Pagination
 
 Challenges:
 - even with great db design (3NF, etc.), complex queries are unavoidable
@@ -190,7 +223,7 @@ Tradeoffs:
 - complex test suite, must use nested for-loops to generate test cases, and implement test case index tracking
 - added complexity of introducing true multithreading to scale CPU-bound test loads via "multiprocessing" package (not "theading")
 
-### 4.2.3 Normalisation
+### 2.2.3 Normalisation
 
 Challenges:
 - different users have different devices and input levels when recording
@@ -208,7 +241,7 @@ Tradeoffs:
 - may cause noise to be more obvious, and may cause the loss of dynamic range
 - luckily, for the context of this website, you do not need extreme quality to make words audible
 
-### 4.2.4 Content Moderation
+### 2.2.4 Content Moderation
 
 Challenges:
 - nature of user-generated content
@@ -224,7 +257,7 @@ Tradeoffs:
 - the cronjob can be manipulated
 - the cronjob is currently the best compromise for a tiny userbase, but its evaluation rules will fall apart once there are a handful of active users
 
-### 4.2.5 Likes and Dislikes
+### 2.2.5 Likes and Dislikes
 
 Challenges:
 - one user can easily have hundreds of likes in the future
@@ -242,9 +275,7 @@ Tradeoffs:
 - fairly complex concepts to grasp in practice
 - difficult to write tests for race conditions, so implementing solutions must require adequate understanding in advance
 
-
-
-## 4.3 Tools Evaluation
+## 2.3 Tools Evaluation
 <table>
   <tr>
     <th>Tool</th>
@@ -307,9 +338,9 @@ Tradeoffs:
 
 
 
-# 5. Local Setup
+# 3. Local Setup
 
-## 5.1 Prerequisites
+## 3.1 Prerequisites
 
 ### Static LAN IP
 - refer to the appropriate tutorial for your OS
@@ -338,15 +369,15 @@ Tradeoffs:
 - within its own container, it installs all the VSCode plugins used, while downloading frontend and backend packages for linting and autocomplete
 - you then make your VSCode reopen the project in container
 
-## 5.2 Run Docker containers
+## 3.2 Run Docker containers
     docker-compose --env-file ./env/.env --file ./docker-compose-dev.yaml up --build --no-deps --force-recreate -d
     docker-compose --env-file ./env/.env --file ./docker-compose-dev.yaml up django_runserver --build --no-deps --force-recreate -d
 
 
 
-# 6. Tests
+# 4. Tests
 
-## 6.1 Frontend
+## 4.1 Frontend
 - 0 tests (100% do not recommend)
 - my mistake was from judging how easy it was to manually test when creating new components on blank pages
 - this was nearly unsustainable towards the final stages, with one small change requiring entire steps of manual tests
@@ -354,7 +385,7 @@ Tradeoffs:
 - refer to Jest/Vitest for unit and component testing
 - refer to Playwright/Cypress for UI-heavy flows via end-to-end testing
 
-## 6.2 Backend
+## 4.2 Backend
 ### Database Separation for Different Tests
 #### Issue
 - Django's default testing behaviour is to auto-create test db, then destroy it after the tests
@@ -364,11 +395,11 @@ Tradeoffs:
 - run db data mocking against live dev db, which will persist while not interfering with test db
 - freely choose when to use the TestRunner at cmd via "--testrunner=..." for separation of integration and performance tests
 
-### 6.2.1 Prepare persistent db data for TestRunnerWithMirror
+### 4.2.1 Prepare persistent db data for TestRunnerWithMirror
     #this will generate around 150k audio_clip rows if the first arg is 1
     python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run(1, True, 2);"
     
-### 6.2.2 90% test coverage for unit and integration tests
+### 4.2.2 90% test coverage for unit and integration tests
     coverage erase;
     coverage run --parallel-mode manage.py test voicewake.tests.test_apis.Users_TestCase;
     coverage run --parallel-mode manage.py test voicewake.tests.test_apis.Core_TestCase;
@@ -385,7 +416,7 @@ Tradeoffs:
     coverage combine;
     coverage html;
 
-### 6.2.3 Sub-150ms query time for performance tests
+### 4.2.3 Sub-150ms query time for performance tests
     #uses multiprocessing
     #run these test cases one by one to mitigate the impact of hardware as bottleneck
     #not worth running at CI/CD
@@ -402,7 +433,7 @@ Tradeoffs:
 
 
 
-# 7. Deployment
+# 5. Deployment
 
 ## Option A: Fully Cloud-Native Services
 - launch ECS using images from ECR (Gunicorn, Celery), then set up RDS (PostgreSQL), ElastiCache (Redis), and ALB
@@ -421,7 +452,7 @@ Tradeoffs:
 
 
 
-# 8. Future Improvements
+# 6. Future Improvements
 - add automated frontend tests (skipped to save time based on naive early experiences)
 - pub/sub with websockets via Django Channels and Redis for proper notification service (skipped to keep the project simpler and appropriate for realistic low-demand contexts)
 - migrate EC2's database to AWS RDS when it makes financial sense (skipped for learning opportunities and to save cost on a 0-revenue project)
@@ -429,7 +460,7 @@ Tradeoffs:
 
 
 
-# 9. Credits
+# 7. Credits
 
 It is with your largely thankless effort that free learning opportunities through open-source software is widely available. Thank you to all the willing replies on StackOverflow, and the hardworking contributors and maintainers of:
 - <a href="https://www.djangoproject.com/">Django</a>
@@ -451,7 +482,7 @@ It is with your largely thankless effort that free learning opportunities throug
 
 While this project leverages open-source tools, the original logic and architecture contained here are reserved for portfolio review purposes. See the License section below for details.
 
-# 10. License
+# 8. License
 
 This project is Source-Available for portfolio review and educational purposes only.
 
@@ -459,9 +490,13 @@ Copyright © 2026 Adrian Chang. All rights reserved.
 
 This code is not released under an open-source license. Unauthorized copying, modification, or redistribution of this software is strictly prohibited. For full details, see the LICENSE.md file.
 
-## Contributions & Forking
+# 9. Contributions & Forking
 
-This project is maintained as a personal portfolio piece to showcase my engineering process. While the source code is public for review, I am not currently accepting Pull Requests or entertaining forks for derivative versions. Thank you for respecting the project's integrity.
+This project is maintained as a personal portfolio piece to showcase my engineering process.
+
+While the source code is public for review, I am not currently accepting Pull Requests or entertaining forks for derivative versions.
+
+Thank you for your understanding.
 
 
 
