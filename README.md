@@ -425,6 +425,7 @@ Tradeoffs:
 - add automated frontend tests (skipped to save time based on naive early experiences)
 - pub/sub with websockets via Django Channels and Redis for proper notification service (skipped to keep the project simpler and appropriate for realistic low-demand contexts)
 - migrate EC2's database to AWS RDS when it makes financial sense (skipped for learning opportunities and to save cost on a 0-revenue project)
+- for race condition of any future high-stakes "create only" operation, have the frontend generate random UUID once to send with request, then save UUID and request in db table, while enforcing UUID column as unique
 
 
 
