@@ -263,7 +263,7 @@ Tradeoffs:
 - within its own container, it installs all the VSCode plugins used, while downloading frontend and backend packages for linting and autocomplete
 - you then make your VSCode reopen the project in container
 
-### 5.2 Run Docker containers
+## 5.2 Run Docker containers
     docker-compose --env-file ./env/.env --file ./docker-compose-dev.yaml up --build --no-deps --force-recreate -d
     docker-compose --env-file ./env/.env --file ./docker-compose-dev.yaml up django_runserver --build --no-deps --force-recreate -d
 
