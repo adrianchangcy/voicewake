@@ -224,11 +224,86 @@ Tradeoffs:
 - the cronjob can be manipulated
 - the cronjob is currently the best compromise for a tiny userbase, but its evaluation rules will fall apart once there are a handful of active users
 
-## 4.3 Tool Evaluation
+### 4.2.5 Likes and Dislikes
+
+Challenges:
+- one user can easily have hundreds of likes in the future
+- potentially one of the earliest points of the system to hit scaling limits
+- heavy and frequent read/write, especially for populating test database
+- highly susceptible to race conditions
+
+Solutions:
+- at frontend, allow users to spam actions, but implement a delay that resets on every action, to ideally only send the "last" action to server
+- at backend (important), group the update of likes/dislikes table and metrics table within the same atomic transaction, and use row-level lock for metrics table
+- at database, ensure heavy-write metrics table is separated from heavy-read audio clips table, so row locks on metrics don't affect other updates on audio clips
+- at database, avoid the use of triggers, so row insertions for populating test database remain frictionless
+
+Tradeoffs:
+- fairly complex concepts to grasp in practice
+- difficult to write tests for race conditions, so implementing solutions must require adequate understanding in advance
 
 
 
+## 4.3 Tools Evaluation
+<table>
+  <tr>
+    <th>Tool</th>
+    <th>Pros</th>
+    <th>Cons</th>
+    <th>Alternative Tool</th>
+    <th>Pros</th>
+    <th>Cons</th>
+    <th>Justification</th>
+  </tr>
+  <tr>
+    <td>Django</td>
+    <td>batteries-included, well-maintained, excellent documentation, built on top of Python</td>
+    <td>carries over Python's greatest strength (and weakness) of poor DX, autocomplete, and typing, when handling complex data such as dicts</td>
+    <td>Golang</td>
+    <td>prides itself on being easy to code, read, and maintain, superior performance, with static typing available</td>
+    <td>lacking in packages for future complexities</td>
+    <td>already well-versed with Python, much easier access to Python's immense variety of public packages to save on dev time, with no existing userbase to justify Golang's superior performance that can only be seen at scale</td>
+  </tr>
+  <tr>
+    <td>Vue</td>
+        <td>superior DX, easier for beginners and maintenance via Options API, clear separation of HTML and logic, more sensible on optimisation (e.g. default opt-out on rerenders vs. React's default opt-in), has excellent complementary Pinia for state management and persistence, generally more opinionated for superior consistency and easier onboarding across projects</td>
+        <td>lack of high quality components for complex use cases</td>
+    <td>React</td>
+        <td>popularity contributes to wider variety of higher quality packages, superior usability, easier to find collaborators</td>
+        <td>too tightly coupled between HTML and logic, too much freedom in how a project can be designed</td>
+    <td>Vue is more sensible with better DX, but may be less feasible from collaboration and hiring perspective</td>
+  </tr>
+  
+  <tr>
+      <td>PostgreSQL</td>
+          <td>mature ACID compliance, mature and battle-tested, first-class support from Django, well-maintained, actively developed, readily supports more column types like arrays (for audio volume peaks)</td>
+          <td>lack of native specialty tools, but has high quality 3rd party tools readily available, e.g. Pgpool-II for reusing connections, load balancing SELECT queries, etc., and pgBackRest for automatic incremental backup and recovery that's safer than pg_dump</td>
+      <td>MongoDB (NoSQL)</td>
+          <td>easier to prototype with, better at scaling horizontally, highly flexible for loose data relations</td>
+          <td>weakly enforced data relations will introduce complexity to systems and tests, not natively supported by Django</td>
+      <td>already experienced with raw SQL queries, Django has first-class support for PostgreSQL, comes with all the benefits of a relational database, wide cloud support, battle-tested, with no current use case for handling complex loosely structured data to justify MongoDB</td>
+  </tr>
 
+  <tr>
+      <td>Redis</td>
+          <td>feature-rich, easy to use, simple, wide cloud support</td>
+          <td>may have more cost and legal hurdles</td>
+      <td>Valkey</td>
+          <td>straightfoward open source licensing, is a direct drop-in replacement for Redis due to it being a fork of Redis</td>
+          <td>higher chance of being less compatible across different tools</td>
+      <td>Redis was the obvious (and dominant) choice when the project had started, well before its licensing backlash, and I wanted to maintain my focus on development at the time</td>
+  </tr>
+
+  <tr>
+      <td>AWS</td>
+          <td>more readily at serving US traffic (ideal target audience), incredible maturity, most dominant market share, offers more specialised services for complex needs, attractive free tier, easier to land a job upon decent mastering of it</td>
+          <td>can be overkill for small projects compared to a VPS if strictly going full cloud-native</td>
+      <td>GCP</td>
+          <td>generally lower costs, superior Kubernetes support and maturity</td>
+          <td>smaller market share, less mature</td>
+      <td>since learning opportunities and job prospects were top priority, AWS was the clear winner with its free tier</td>
+  </tr>
+</table>
 
 
 
@@ -347,11 +422,31 @@ Tradeoffs:
 
 
 # 8. Future Improvements
+- add automated frontend tests (skipped to save time based on naive early experiences)
+- pub/sub with websockets via Django Channels and Redis for proper notification service (skipped to keep the project simpler and appropriate for realistic low-demand contexts)
+- migrate EC2's database to AWS RDS when it makes financial sense (skipped for learning opportunities and to save cost on a 0-revenue project)
 
 
 
 # 9. Credits
 
+It is with your largely thankless effort that free learning opportunities through open-source software is widely available. Thank you to all the willing replies on StackOverflow, and the hardworking contributors and maintainers of:
+- <a href="https://www.djangoproject.com/">Django</a>
+- <a href="https://vuejs.org/">Vue</a>
+- <a href="https://pinia.vuejs.org/">Pinia</a>
+- <a href="https://www.postgresql.org/">PostgreSQL</a>
+- <a href="https://www.docker.com/">Docker</a>
+- <a href="https://nginx.org/">NGINX</a>
+- <a href="https://docs.celeryq.dev/en/v5.4.0/index.html">Celery</a>
+- <a href="https://redis.io/">Redis</a>
+- <a href="https://pgbackrest.org/">pgBackRest</a>
+- <a href="https://github.com/fail2ban/fail2ban">Fail2Ban</a>
+- <a href="https://github.com/Akryum/vue-virtual-scroller">vue-virtual-scroller</a>
+- <a href="https://animejs.com/">Animejs</a>
+- <a href="https://github.com/emmanuelsw/notiwind">Notiwind</a>
+- <a href="https://github.com/muaz-khan/RecordRTC">RecordRTC</a>
+- <a href="https://github.com/jantimon/remote-web-worker">remote-web-worker</a>
+- <a href="https://github.com/flurdy/bad_usernames">bad_usernames</a>
 
 
 # 10. License
