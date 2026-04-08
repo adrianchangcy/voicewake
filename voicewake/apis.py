@@ -2866,12 +2866,12 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
             try:
 
-                audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
-                    user=request.user,
-                    audio_clip_id=request_data['audio_clip_id']
-                )
-
                 with transaction.atomic():
+
+                    audio_clip_like_dislike = AudioClipLikesDislikes.objects.select_for_update().get(
+                        user=request.user,
+                        audio_clip_id=request_data['audio_clip_id']
+                    )
 
                     #should always exist
                     #don't catch error so system can log it
@@ -2917,25 +2917,25 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
             #enables handling of request_data['is_liked']=True and row.is_liked=True, request_data['is_liked']=True and row.is_liked=False
             try:
 
-                audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
-                    user=request.user,
-                    audio_clip_id=request_data['audio_clip_id'],
-                )
-
-                #row exists with identical state
-                #allow frontend to handle race condition gracefully
-
-                if request_data['is_liked'] == audio_clip_like_dislike.is_liked:
-
-                    return Response(
-                        data={
-                        },
-                        status=status.HTTP_200_OK
-                    )
-
                 #change like/dislike
 
                 with transaction.atomic():
+
+                    audio_clip_like_dislike = AudioClipLikesDislikes.objects.select_for_update().get(
+                        user=request.user,
+                        audio_clip_id=request_data['audio_clip_id'],
+                    )
+
+                    #row exists with identical state
+                    #allow frontend to handle race condition gracefully
+
+                    if request_data['is_liked'] == audio_clip_like_dislike.is_liked:
+
+                        return Response(
+                            data={
+                            },
+                            status=status.HTTP_200_OK
+                        )
 
                     #should always exist
                     #don't catch error so system can log it
@@ -2973,13 +2973,13 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
                 #handling this scenario is more straightforward
                 #add new like/dislike
 
-                audio_clip_like_dislike = AudioClipLikesDislikes.objects.create(
-                    user=request.user,
-                    audio_clip_id=request_data['audio_clip_id'],
-                    is_liked=request_data['is_liked']
-                )
-
                 with transaction.atomic():
+
+                    audio_clip_like_dislike = AudioClipLikesDislikes.objects.create(
+                        user=request.user,
+                        audio_clip_id=request_data['audio_clip_id'],
+                        is_liked=request_data['is_liked']
+                    )
 
                     #should always exist
                     #don't catch error so system can log it
