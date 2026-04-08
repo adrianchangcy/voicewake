@@ -23,6 +23,7 @@ Overall, it was a balance between project planning, system design, and learning 
 
 
 
+# Table of Contents
 - [1. Architecture](#1-architecture)
   - [1.1 System Infrastructure](#11-system-infrastructure)
     - [Option A: Fully Cloud-Native Services](#option-a-fully-cloud-native-services)
