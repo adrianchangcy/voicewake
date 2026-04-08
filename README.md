@@ -106,6 +106,9 @@ Overall, it was a balance between project planning, system design, and learning 
 
 ### 2.1.1 Performant Infinite Scrolling
 
+<details>
+  <summary>View details</summary>
+
 Challenges:
 - high UI lag when combining scrolling and hundreds of HTML elements
 - too many HTML elements to display
@@ -120,7 +123,12 @@ Tradeoffs:
 - minimal, since vue-virtual-scroller is well-developed
 - some time cost required for learning HTML Canvas and its quirks
 
+</details>
+
 ### 2.1.2 Data Management for Infinite Content
+
+<details>
+  <summary>View details</summary>
 
 Challenges:
 - redundant refetch of content via selection of previous filters
@@ -136,8 +144,13 @@ Tradeoffs:
 - still vulnerable to memory or localStorage overload if scrolling forever
 - shelved the concern above due to high threshold (around 1kb per event) and reality of minimal content on live launch
 
+</details>
+
 ### 2.1.3 Custom Playback Component
 
+<details>
+  <summary>View details</summary>
+  
 Challenges:
 - HTML audio playback animation isn't smooth
 - HTML audio has unpleasant DX from async .play() and sync .pause()
@@ -168,7 +181,12 @@ Tradeoffs:
 - significant time cost is unavoidable
 - compounding code complexity when addressing HTML issues along with bugs from extra libraries used (Animejs)
 
+</details>
+
 ### 2.1.4 Countdown with Worker()
+
+<details>
+  <summary>View details</summary>
 
 Challenges:
 - when the user switches browser tabs, the main thread for the website is paused, affecting setInterval()
@@ -190,9 +208,14 @@ Tradeoffs:
 - this complexity remains isolated to the frontend and Vite, allowing for no special attention in other areas (backend/AWS/etc.)
 - NGINX will match "/static/..." directory requests to CloudFront
 
+</details>
+
 ## 2.2 Backend
 
 ### 2.2.1 Passwordless Email TOTP Login
+
+<details>
+  <summary>View details</summary>
 
 Challenges:
 - conventional passwords are hard to remember
@@ -211,7 +234,12 @@ Tradeoffs:
 - HTML for email is notoriously difficult to work with
 - requires third-party email service (AWS SES) to sign emails via DomainKeys Identified Mail (DKIM), so they don't end up in spam folder
 
+</details>
+
 ### 2.2.2 Filter-Based and Cursor-Based Pagination
+
+<details>
+  <summary>View details</summary>
 
 Challenges:
 - even with great db design (3NF, etc.), complex queries are unavoidable
@@ -231,7 +259,12 @@ Tradeoffs:
 - complex test suite, must use nested for-loops to generate test cases, and implement test case index tracking
 - added complexity of introducing true multithreading to scale CPU-bound test loads via "multiprocessing" package (not "theading")
 
+</details>
+
 ### 2.2.3 Normalisation
+
+<details>
+  <summary>View details</summary>
 
 Challenges:
 - different users have different devices and input levels when recording
@@ -249,7 +282,12 @@ Tradeoffs:
 - may cause noise to be more obvious, and may cause the loss of dynamic range
 - luckily, for the context of this website, you do not need extreme quality to make words audible
 
+</details>
+
 ### 2.2.4 Content Moderation
+
+<details>
+  <summary>View details</summary>
 
 Challenges:
 - nature of user-generated content
@@ -265,7 +303,12 @@ Tradeoffs:
 - the cronjob can be manipulated
 - the cronjob is currently the best compromise for a tiny userbase, but its evaluation rules will fall apart once there are a handful of active users
 
+</details>
+
 ### 2.2.5 Likes and Dislikes
+
+<details>
+  <summary>View details</summary>
 
 Challenges:
 - one user can easily have hundreds of likes in the future
@@ -283,8 +326,10 @@ Tradeoffs:
 - fairly complex concepts to grasp in practice
 - difficult to write tests for race conditions, so implementing solutions must require adequate understanding in advance
 
+</details>
+
 ## 2.3 Tools Evaluation
-<table style="width: 100%; height: auto;">
+<table>
   <tr>
     <th>Tool</th>
     <th>Pros</th>
