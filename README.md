@@ -448,10 +448,19 @@ It is with your largely thankless effort that free learning opportunities throug
 - <a href="https://github.com/jantimon/remote-web-worker">remote-web-worker</a>
 - <a href="https://github.com/flurdy/bad_usernames">bad_usernames</a>
 
+While this project leverages open-source tools, the original logic and architecture contained here are reserved for portfolio review purposes. See the License section below for details.
 
 # 10. License
 
+This project is Source-Available for portfolio review and educational purposes only.
 
+Copyright © 2026 Adrian Chang. All rights reserved.
+
+This code is not released under an open-source license. Unauthorized copying, modification, or redistribution of this software is strictly prohibited. For full details, see the LICENSE.md file.
+
+## Contributions & Forking
+
+This project is maintained as a personal portfolio piece to showcase my engineering process. While the source code is public for review, I am not currently accepting Pull Requests or entertaining forks for derivative versions. Thank you for respecting the project's integrity.
 
 
 
