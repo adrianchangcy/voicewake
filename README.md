@@ -6,7 +6,7 @@ A queue-based audio social media website where two users can match and complete 
 
 There is a market gap for offline audio interaction between strangers. We have WhatsApp, Facebook, Omegle, but there is no popular solution that mixes their strengths.
 
-By no means am I expecting this website to be life-changing for anybody. It's primarily a way for me to upskill myself by bringing an idea into reality. It is more complex than a To-Do app, while still allowing room for technical exploration.
+By no means am I expecting this website to be the next Facebook. It's simply a way for me to upskill myself by bringing an idea into reality. It is more complex than a To-Do app, while still allowing room for technical exploration.
 
 Overall, it was a balance between project planning, system design, and learning new tools (Django, PostgreSQL, Docker, AWS, CI/CD, TypeScript, Vue, Tailwind, Redis, Celery, NGINX, CloudFront).
 
@@ -147,12 +147,20 @@ Challenges:
 - must integrate into infinite scrolling performantly
 - must blend in with the website's design language
 
+<video src="https://github.com/user-attachments/assets/7ac5b80c-cffb-4ee3-b57b-20fb31078f07" width="100%" style="object-fit: contain;" controls muted>
+  Your browser does not support the video tag.
+</video>
+
 Solutions:
 - use custom animation and couple it tightly with playback
 - one-off play() and pause() for better DX
 - display peaks via 1 HTML Canvas instead of 20 HTML divs
 - stealthily allow HTML Audio to force-play itself at the end without users knowing
 - use event listener to detect screen width changes so it can redraw and sync everything
+
+<video src="https://github.com/user-attachments/assets/c5a94fdf-659e-4f14-908c-0fe6250b6b35" width="100%" style="object-fit: contain;" controls>
+  Your browser does not support the video tag.
+</video>
 
 Tradeoffs:
 - fully addresses all challenges and requirements
@@ -276,7 +284,7 @@ Tradeoffs:
 - difficult to write tests for race conditions, so implementing solutions must require adequate understanding in advance
 
 ## 2.3 Tools Evaluation
-<table>
+<table style="width: 100%; height: auto;">
   <tr>
     <th>Tool</th>
     <th>Pros</th>
