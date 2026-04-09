@@ -587,7 +587,7 @@ class TestRunnerWithMirror(DiscoverRunner):
 
 # 5. Deployment
 
-## Option A: Fully Cloud-Native Services
+## Option A: Full Cloud-Native Services
 - launch ECS using images from ECR (Gunicorn, Celery), then set up RDS (PostgreSQL), ElastiCache (Redis), and ALB
 - have your URL resolve to ALB's public IP
 - at security group's inbound/outbound rules, allow only traffic from ALB
