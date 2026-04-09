@@ -502,8 +502,8 @@ Tradeoffs:
 ### 0 tests (100% do not recommend)
 - my mistake was from judging how easy it was to manually test when creating new components on blank pages
 - nearly unsustainable towards the final stages
-- one small change requiring entire steps of manual tests
-- if this project is to be continue, automated tests must be created first
+- one small change can now require entire steps of manual tests
+- if this project is to be worked on, automated tests must be created first
 - refer to Jest/Vitest for unit and component testing
 - refer to Playwright/Cypress for UI-heavy flows via end-to-end testing
 
@@ -607,8 +607,8 @@ class TestRunnerWithMirror(DiscoverRunner):
 # 6. Future Improvements
 - add automated frontend tests (skipped to save time based on naive early experiences)
 - pub/sub with websockets via Django Channels and Redis for proper notification service (skipped to keep the project simpler and appropriate for realistic low-demand contexts)
-- migrate EC2's database to AWS RDS when it makes financial sense (skipped for learning opportunities and to save cost on a 0-revenue project)
-- for race condition of any future high-stakes "create only" operation, have the frontend generate random UUID once to send with request, then save UUID and request in db table, while enforcing UUID column as unique
+- migrate db to AWS RDS when it makes financial sense (skipped for learning opportunities and to save cost on a 0-revenue project)
+- for race condition of any future high-stakes "create only" operation, have the frontend generate random UUID once to send with request, then save UUID+request in db table, while enforcing UUID column as unique
 
 
 
