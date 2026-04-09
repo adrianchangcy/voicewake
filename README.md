@@ -4,7 +4,7 @@ A queue-based audio social media website where two users can match and complete 
 
 # Motivation
 
-There is a market gap for offline audio interaction between strangers. We have WhatsApp, Facebook, Omegle, but there is no popular solution that mixes their strengths.
+There is a market gap for audio interaction between strangers without live pressures. We have WhatsApp, Facebook, Omegle, but there is no popular solution that mixes their strengths.
 
 By no means am I expecting this website to be the next Facebook. It's simply a way for me to upskill myself by bringing an idea into reality. It is more complex than a To-Do app, while still allowing room for technical exploration.
 
