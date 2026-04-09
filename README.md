@@ -461,7 +461,8 @@ class TestRunnerWithMirror(DiscoverRunner):
 
 
 ### 4.2.1 Prepare persistent db data for TestRunnerWithMirror
-    #this will generate around 150k audio_clip rows multiplied by arg0
+    #this will generate around 150k audio_clip rows per iteration
+    #sample_run(max_randomness_iteration_count=1, use_multiprocessing=True, subprocess_count=2)
     python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run(1, True, 2);"
     
 ### 4.2.2 90% test coverage for unit and integration tests
@@ -497,8 +498,8 @@ class TestRunnerWithMirror(DiscoverRunner):
         --testrunner='voicewake.tests.test_metrics.TestRunnerWithMirror';
     python manage.py test voicewake.tests.test_metrics.ListEventReplyChoices_TestCase.test_list_event_reply_choices\
         --testrunner='voicewake.tests.test_metrics.TestRunnerWithMirror';
-- these performance tests will raise ValueError when the threshold is hit
 - when threshold is hit, allow for 2 retries and +50ms buffer to account for PSQL's own automated ways of data caching
+- raise ValueError when threshold is hit again, with 0 retries left
 - hardcode the final threshold+buffer value once at voicewake.tests.test_metrics.BrowseEvents_TestCase.maximum_time_elapsed_ms
 
 
