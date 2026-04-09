@@ -1,10 +1,6 @@
 # <a href="voicewake.com">voicewake.com</a>
 A queue-based audio social media website where two users can match and complete an event to be shown on the front page.
 
-<video src="https://github.com/user-attachments/assets/067a28d4-58f5-43f8-b322-2b385cc00b70" width="100%" style="object-fit: contain;" muted autoplay loop>
-  Your browser does not support the video tag.
-</video>
-
 # Motivation
 
 There is a market gap for audio interaction between strangers without live pressures. We have WhatsApp, Facebook, Omegle, but there is no popular solution that mixes their strengths.
@@ -184,20 +180,12 @@ Challenges:
 - must integrate into infinite scrolling performantly
 - must blend in with the website's design language
 
-<video src="https://github.com/user-attachments/assets/7ac5b80c-cffb-4ee3-b57b-20fb31078f07" width="100%" style="object-fit: contain;" controls>
-  Your browser does not support the video tag.
-</video>
-
 Solutions:
 - use custom animation and couple it tightly with playback
 - one-off play() and pause() for better DX
 - display peaks via 1 HTML Canvas instead of 20 HTML divs
 - stealthily allow HTML Audio to force-play itself at the end without users knowing
 - use event listener to detect screen width changes so it can redraw and sync everything
-
-<video src="https://github.com/user-attachments/assets/c5a94fdf-659e-4f14-908c-0fe6250b6b35" width="100%" style="object-fit: contain;" controls>
-  Your browser does not support the video tag.
-</video>
 
 Tradeoffs:
 - fully addresses all challenges and requirements
