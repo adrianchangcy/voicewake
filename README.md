@@ -26,8 +26,8 @@ Overall, it was a balance between project planning, system design, and learning 
 # Table of Contents
 - [1. Architecture](#1-architecture)
   - [1.1 System Infrastructure](#11-system-infrastructure)
-    - [Option A: Fully Cloud-Native Services](#option-a-fully-cloud-native-services)
-    - [Option B: EC2 or VPS with Minor Cloud Services](#option-b-ec2-or-vps-with-minor-cloud-services)
+    - [Option A: Full Cloud-Native Services](#option-a-full-cloud-native-services)
+    - [Option B: EC2 or VPS with Minimal Cloud Services](#option-b-ec2-or-vps-with-minimal-cloud-services)
   - [1.2 Data Model (Abstracted ERD)](#12-data-model-abstracted-erd)
   - [1.3 System Logic (Sequence/Flow)](#13-system-logic-sequenceflow)
     - [Login](#login)
@@ -65,8 +65,8 @@ Overall, it was a balance between project planning, system design, and learning 
     - [4.2.2 90% test coverage for unit and integration tests](#422-90-test-coverage-for-unit-and-integration-tests)
     - [4.2.3 Sub-150ms query time for performance tests](#423-sub-150ms-query-time-for-performance-tests)
 - [5. Deployment](#5-deployment)
-  - [Option A: Full Cloud-Native Services](#option-a-fully-cloud-native-services-1)
-  - [Option B: EC2 or VPS with Minor Cloud Services](#option-b-ec2-or-vps-with-minor-cloud-services-1)
+  - [Option A: Full Cloud-Native Services](#option-a-full-cloud-native-services-1)
+  - [Option B: EC2 or VPS with Minimal Cloud Services](#option-b-ec2-or-vps-with-minimal-cloud-services-1)
 - [6. Future Improvements](#6-future-improvements)
 - [7. Credits](#7-credits)
 - [8. License](#8-license)
@@ -78,10 +78,10 @@ Overall, it was a balance between project planning, system design, and learning 
 
 ## 1.1 System Infrastructure
 
-### Option A: Fully Cloud-Native Services
+### Option A: Full Cloud-Native Services
 <img src="https://github.com/user-attachments/assets/decd4446-b486-46d1-ac2e-63ca2ee58673" style="width: 400; height: auto; display: block;">
 
-### Option B: EC2 or VPS with Minor Cloud Services
+### Option B: EC2 or VPS with Minimal Cloud Services
 <img src="https://github.com/user-attachments/assets/477d4ebb-27eb-45cc-bd85-cc092106799f" style="width: 400; height: auto; display: block;">
 
 ## 1.2 Data Model (Abstracted ERD)
@@ -596,7 +596,7 @@ class TestRunnerWithMirror(DiscoverRunner):
 - can be too expensive for a tiny project
 - can be overkill for a project with 99% static files
 
-## Option B: EC2 or VPS with Minor Cloud Services
+## Option B: EC2 or VPS with Minimal Cloud Services
 - refer to /ec2-setup-without-nat/ec2-setup.sh
 - if you want to create repos for a system with 0 access to internet (a.k.a. air-gapped), refer to /ec2-setup-without-nat/ec2-create-offline-repo.sh
 - create your repo in a live instance, since their public images are behind in versioning, and can cause complex installation errors later
