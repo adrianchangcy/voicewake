@@ -58,7 +58,7 @@ Overall, it was a balance between project planning, system design, and learning 
   - [3.2 Run Docker containers](#32-run-docker-containers)
 - [4. Tests](#4-tests)
   - [4.1 Frontend](#41-frontend)
-    - [0 tests (100% do not recommend)](#0-tests-100%-do-not-recommend)
+    - [0 tests (100% do not recommend)](#0-tests-100-do-not-recommend)
   - [4.2 Backend](#42-backend)
     - [Database Separation for Different Tests](#database-separation-for-different-tests)
     - [4.2.1 Prepare persistent db data for TestRunnerWithMirror](#421-prepare-persistent-db-data-for-testrunnerwithmirror)
