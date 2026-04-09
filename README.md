@@ -448,6 +448,17 @@ Tradeoffs:
 - create a custom TestRunner (TestRunnerWithMirror) with extra db specification at settings
 - run db data mocking against live dev db, which will persist while not interfering with test db
 - freely choose when to use the TestRunner at cmd via "--testrunner=..." for separation of integration and performance tests
+```python
+class TestRunnerWithMirror(DiscoverRunner):
+
+    def setup_databases(self, **kwargs):
+
+        # Override DATABASES before test DB setup
+        settings.DATABASES['default']['TEST'].update({'MIRROR': 'default'})
+        return super().setup_databases(**kwargs)
+```
+
+
 
 ### 4.2.1 Prepare persistent db data for TestRunnerWithMirror
     #this will generate around 150k audio_clip rows multiplied by arg0
@@ -469,10 +480,8 @@ Tradeoffs:
     coverage run --parallel-mode manage.py test voicewake.tests.test_services.HandleUserOTP_TestCase;
     coverage combine;
     coverage html;
-<details>
-  <summary>View proof</summary>
-  <img width="736" height="354" alt="image" src="https://github.com/user-attachments/assets/d32aaf9c-ab8b-45f4-8c00-3b113d43d2f0" />
-</details>
+<img width="728" height="356" alt="image" src="https://github.com/user-attachments/assets/530e68cf-3722-4f39-9219-28a1fdeead70" />
+
 
 ### 4.2.3 Sub-150ms query time for performance tests
     #uses multiprocessing
@@ -488,6 +497,9 @@ Tradeoffs:
         --testrunner='voicewake.tests.test_metrics.TestRunnerWithMirror';
     python manage.py test voicewake.tests.test_metrics.ListEventReplyChoices_TestCase.test_list_event_reply_choices\
         --testrunner='voicewake.tests.test_metrics.TestRunnerWithMirror';
+- these performance tests will raise ValueError when the threshold is hit
+- when threshold is hit, allow for 2 retries and +50ms buffer to account for PSQL's own automated ways of data caching
+- hardcode the final threshold+buffer value once at voicewake.tests.test_metrics.BrowseEvents_TestCase.maximum_time_elapsed_ms
 
 
 
