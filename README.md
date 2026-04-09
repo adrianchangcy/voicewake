@@ -58,6 +58,7 @@ Overall, it was a balance between project planning, system design, and learning 
   - [3.2 Run Docker containers](#32-run-docker-containers)
 - [4. Tests](#4-tests)
   - [4.1 Frontend](#41-frontend)
+    - [0 tests (100% do not recommend)](#0-tests-100%-do-not-recommend)
   - [4.2 Backend](#42-backend)
     - [Database Separation for Different Tests](#database-separation-for-different-tests)
     - [4.2.1 Prepare persistent db data for TestRunnerWithMirror](#421-prepare-persistent-db-data-for-testrunnerwithmirror)
@@ -497,7 +498,8 @@ Tradeoffs:
 # 4. Tests
 
 ## 4.1 Frontend
-- 0 tests (100% do not recommend)
+
+### 0 tests (100% do not recommend)
 - my mistake was from judging how easy it was to manually test when creating new components on blank pages
 - this was nearly unsustainable towards the final stages, with one small change requiring entire steps of manual tests
 - automated tests must be created before any future development and collaboration
@@ -507,17 +509,14 @@ Tradeoffs:
 ## 4.2 Backend
 
 ### Database Separation for Different Tests
-Django's default testing behaviour is to auto-create test db, then destroy it after the tests.
-You can persist the test db, but it's only seamless enough for test-and-check steps.
+- Django's default testing behaviour is to auto-create test db, then destroy it after the tests
+- you can persist the test db, but it's only seamless enough for test-and-check steps
+- to solve this, explicitly declare 'TEST' db at settings.dev
+- create a custom TestRunner (TestRunnerWithMirror) that will use {'MIRROR': 'default'}
+- MIRROR is Django's way of allowing you to use multiple dbs, and writing to a mirrored db will also write to source db
+- therefore, the solution is for test db to mirror live dev db
 
-To solve this, explicitly declare 'TEST' db at settings.dev, then create a custom TestRunner (TestRunnerWithMirror) that will use {'MIRROR': 'default'}.
-
-MIRROR is Django's way of allowing you to use multiple dbs. Writing to a mirrored db will also write to source db.
-Therefore, the solution is for test db to mirror live db.
-
-The reason we override DiscoverRunner, is because it's the only time during tests where db initialisation hasn't started. Conventional @override_settings decorator solution is too late for this.
-
-You can now populate live db permanently, then freely choose when to use it during tests via "--testrunner=...".
+You can now populate live dev db permanently, then freely choose when to use it during tests via "--testrunner=...".
 ```python
 #at settings.dev:
 DATABASES['default'].update({
