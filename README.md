@@ -38,7 +38,7 @@ Overall, it was a balance between project planning, system design, and learning 
     - [2.1.1 Performant infinite scrolling](#211-performant-infinite-scrolling)
     - [2.1.2 Data management for infinite content](#212-data-management-for-infinite-content)
     - [2.1.3 Custom playback component](#213-custom-playback-component)
-    - [2.1.4 Countdown with worker()](#214-countdown-with-worker)
+    - [2.1.4 Countdown with Worker()](#214-countdown-with-worker)
   - [2.2 Backend](#22-backend)
     - [2.2.1 Passwordless email TOTP login](#221-passwordless-email-totp-login)
     - [2.2.2 Filter-based and cursor-based pagination](#222-filter-based-and-cursor-based-pagination)
@@ -181,7 +181,7 @@ Challenges:
 - must integrate into infinite scrolling performantly
 - must blend in with the website's design language
 
-<video src="https://github.com/user-attachments/assets/7ac5b80c-cffb-4ee3-b57b-20fb31078f07" width="100%" style="object-fit: contain;" controls muted>
+<video src="https://github.com/user-attachments/assets/7ac5b80c-cffb-4ee3-b57b-20fb31078f07" width="100%" style="object-fit: contain;" controls>
   Your browser does not support the video tag.
 </video>
 
@@ -204,7 +204,7 @@ Tradeoffs:
 
 </details>
 
-### 2.1.4 Countdown with worker()
+### 2.1.4 Countdown with Worker()
 
 <details>
   <summary>View details</summary>
