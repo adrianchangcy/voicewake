@@ -450,7 +450,7 @@ Tradeoffs:
 - freely choose when to use the TestRunner at cmd via "--testrunner=..." for separation of integration and performance tests
 
 ### 4.2.1 Prepare persistent db data for TestRunnerWithMirror
-    #this will generate around 150k audio_clip rows if the first arg is 1
+    #this will generate around 150k audio_clip rows multiplied by arg0
     python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run(1, True, 2);"
     
 ### 4.2.2 90% test coverage for unit and integration tests
@@ -469,6 +469,10 @@ Tradeoffs:
     coverage run --parallel-mode manage.py test voicewake.tests.test_services.HandleUserOTP_TestCase;
     coverage combine;
     coverage html;
+<details>
+  <summary>View proof</summary>
+  <img width="736" height="354" alt="image" src="https://github.com/user-attachments/assets/d32aaf9c-ab8b-45f4-8c00-3b113d43d2f0" />
+</details>
 
 ### 4.2.3 Sub-150ms query time for performance tests
     #uses multiprocessing
