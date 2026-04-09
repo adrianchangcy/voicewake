@@ -60,8 +60,6 @@ Overall, it was a balance between project planning, system design, and learning 
   - [4.1 Frontend](#41-frontend)
   - [4.2 Backend](#42-backend)
     - [Database Separation for Different Tests](#database-separation-for-different-tests)
-      - [Issue](#issue)
-      - [Solution](#solution)
     - [4.2.1 Prepare persistent db data for TestRunnerWithMirror](#421-prepare-persistent-db-data-for-testrunnerwithmirror)
     - [4.2.2 90% test coverage for unit and integration tests](#422-90-test-coverage-for-unit-and-integration-tests)
     - [4.2.3 Sub-150ms query time for performance tests](#423-sub-150ms-query-time-for-performance-tests)
@@ -507,19 +505,34 @@ Tradeoffs:
 - refer to Playwright/Cypress for UI-heavy flows via end-to-end testing
 
 ## 4.2 Backend
+
 ### Database Separation for Different Tests
-#### Challenges
-- Django's default testing behaviour is to auto-create test db, then destroy it after the tests
-- you can persist the test db, but it's only seamless enough for test-and-check steps
-#### Solutions
-- create a custom TestRunner (TestRunnerWithMirror) with extra db specification at settings
-- run db data mocking against live dev db, which will persist while not interfering with test db
-- freely choose when to use the TestRunner at cmd via "--testrunner=..." for separation of integration and performance tests
+Django's default testing behaviour is to auto-create test db, then destroy it after the tests.
+You can persist the test db, but it's only seamless enough for test-and-check steps.
+
+To solve this, explicitly declare 'TEST' db at settings.dev, then create a custom TestRunner (TestRunnerWithMirror) that will use {'MIRROR': 'default'}.
+
+MIRROR is Django's way of allowing you to use multiple dbs. Writing to a mirrored db will also write to source db.
+Therefore, the solution is for test db to mirror live db.
+
+The reason we override DiscoverRunner, is because it's the only time during tests where db initialisation hasn't started. Conventional @override_settings decorator solution is too late for this.
+
+You can now populate live db permanently, then freely choose when to use it during tests via "--testrunner=...".
 ```python
+#at settings.dev:
+DATABASES['default'].update({
+    'TEST': {
+        #'NAME' does not seem to matter but must be specified
+        'NAME': 'test_' + DATABASES['default']['NAME'],
+        #no 'MIRROR' key-value here, so we can use flag + custom runner and add 'MIRROR' whenever we want to use main db
+    },
+})
+
+#at voicewake.tests.test_metrics:
+#custom test runner to allow for toggling of "MIRROR" at db
+#since TEST_RUNNER cannot be changed via @override_settings, i.e. too late
 class TestRunnerWithMirror(DiscoverRunner):
-
     def setup_databases(self, **kwargs):
-
         #override DATABASES before test DB setup
         settings.DATABASES['default']['TEST'].update({'MIRROR': 'default'})
         return super().setup_databases(**kwargs)
