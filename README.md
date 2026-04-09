@@ -65,7 +65,7 @@ Overall, it was a balance between project planning, system design, and learning 
     - [4.2.2 90% test coverage for unit and integration tests](#422-90-test-coverage-for-unit-and-integration-tests)
     - [4.2.3 Sub-150ms query time for performance tests](#423-sub-150ms-query-time-for-performance-tests)
 - [5. Deployment](#5-deployment)
-  - [Option A: Fully Cloud-Native Services](#option-a-fully-cloud-native-services-1)
+  - [Option A: Full Cloud-Native Services](#option-a-fully-cloud-native-services-1)
   - [Option B: EC2 or VPS with Minor Cloud Services](#option-b-ec2-or-vps-with-minor-cloud-services-1)
 - [6. Future Improvements](#6-future-improvements)
 - [7. Credits](#7-credits)
