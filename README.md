@@ -1,6 +1,9 @@
-# voicewake.com
+# <a href="voicewake.com">voicewake.com</a>
 A queue-based audio social media website where two users can match and complete an event to be shown on the front page.
 
+<video src="https://github.com/user-attachments/assets/067a28d4-58f5-43f8-b322-2b385cc00b70" width="100%" style="object-fit: contain;" muted autoplay loop>
+  Your browser does not support the video tag.
+</video>
 
 # Motivation
 
