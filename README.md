@@ -35,16 +35,16 @@ Overall, it was a balance between project planning, system design, and learning 
     - [Reply](#reply)
 - [2. Engineering Insights (Challenges \& Solutions)](#2-engineering-insights-challenges--solutions)
   - [2.1 Frontend](#21-frontend)
-    - [2.1.1 Performant Infinite Scrolling](#211-performant-infinite-scrolling)
-    - [2.1.2 Data Management for Infinite Content](#212-data-management-for-infinite-content)
-    - [2.1.3 Custom Playback Component](#213-custom-playback-component)
-    - [2.1.4 Countdown with Worker()](#214-countdown-with-worker)
+    - [2.1.1 Performant infinite scrolling](#211-performant-infinite-scrolling)
+    - [2.1.2 Data management for infinite content](#212-data-management-for-infinite-content)
+    - [2.1.3 Custom playback component](#213-custom-playback-component)
+    - [2.1.4 Countdown with worker()](#214-countdown-with-worker)
   - [2.2 Backend](#22-backend)
-    - [2.2.1 Passwordless Email TOTP Login](#221-passwordless-email-totp-login)
-    - [2.2.2 Filter-Based and Cursor-Based Pagination](#222-filter-based-and-cursor-based-pagination)
+    - [2.2.1 Passwordless email TOTP login](#221-passwordless-email-totp-login)
+    - [2.2.2 Filter-based and cursor-based pagination](#222-filter-based-and-cursor-based-pagination)
     - [2.2.3 Normalisation](#223-normalisation)
-    - [2.2.4 Content Moderation](#224-content-moderation)
-    - [2.2.5 Likes and Dislikes](#225-likes-and-dislikes)
+    - [2.2.4 Content moderation](#224-content-moderation)
+    - [2.2.5 Likes and dislikes](#225-likes-and-dislikes)
   - [2.3 Tools Evaluation](#23-tools-evaluation)
 - [3. Local Setup](#3-local-setup)
   - [3.1 Prerequisites](#31-prerequisites)
@@ -104,7 +104,7 @@ Overall, it was a balance between project planning, system design, and learning 
 
 ## 2.1 Frontend
 
-### 2.1.1 Performant Infinite Scrolling
+### 2.1.1 Performant infinite scrolling
 
 <details>
   <summary>View details</summary>
@@ -125,7 +125,7 @@ Tradeoffs:
 
 </details>
 
-### 2.1.2 Data Management for Infinite Content
+### 2.1.2 Data management for infinite content
 
 <details>
   <summary>View details</summary>
@@ -167,7 +167,7 @@ Tradeoffs:
 
 </details>
 
-### 2.1.3 Custom Playback Component
+### 2.1.3 Custom playback component
 
 <details>
   <summary>View details</summary>
@@ -204,7 +204,7 @@ Tradeoffs:
 
 </details>
 
-### 2.1.4 Countdown with Worker()
+### 2.1.4 Countdown with worker()
 
 <details>
   <summary>View details</summary>
@@ -279,7 +279,7 @@ Tradeoffs:
 
 ## 2.2 Backend
 
-### 2.2.1 Passwordless Email TOTP Login
+### 2.2.1 Passwordless email TOTP login
 
 <details>
   <summary>View details</summary>
@@ -303,7 +303,7 @@ Tradeoffs:
 
 </details>
 
-### 2.2.2 Filter-Based and Cursor-Based Pagination
+### 2.2.2 Filter-based and cursor-based pagination
 
 <details>
   <summary>View details</summary>
@@ -351,7 +351,7 @@ Tradeoffs:
 
 </details>
 
-### 2.2.4 Content Moderation
+### 2.2.4 Content moderation
 
 <details>
   <summary>View details</summary>
@@ -372,7 +372,7 @@ Tradeoffs:
 
 </details>
 
-### 2.2.5 Likes and Dislikes
+### 2.2.5 Likes and dislikes
 
 <details>
   <summary>View details</summary>
@@ -501,8 +501,9 @@ Tradeoffs:
 
 ### 0 tests (100% do not recommend)
 - my mistake was from judging how easy it was to manually test when creating new components on blank pages
-- this was nearly unsustainable towards the final stages, with one small change requiring entire steps of manual tests
-- automated tests must be created before any future development and collaboration
+- nearly unsustainable towards the final stages
+- one small change requiring entire steps of manual tests
+- if this project is to be continue, automated tests must be created first
 - refer to Jest/Vitest for unit and component testing
 - refer to Playwright/Cypress for UI-heavy flows via end-to-end testing
 
@@ -513,8 +514,9 @@ Tradeoffs:
 - you can persist the test db, but it's only seamless enough for test-and-check steps
 - to solve this, explicitly declare 'TEST' db at settings.dev
 - create a custom TestRunner (TestRunnerWithMirror) that will use {'MIRROR': 'default'}
-- MIRROR is Django's way of allowing you to use multiple dbs, and writing to a mirrored db will also write to source db
-- therefore, the solution is for test db to mirror live dev db
+- MIRROR is Django's way of allowing you to use multiple dbs
+- writing to a mirrored db will also write to source db
+- therefore, making tests use live dev db requires test db to mirror live dev db
 
 You can now populate live dev db permanently, then freely choose when to use it during tests via "--testrunner=...".
 ```python
