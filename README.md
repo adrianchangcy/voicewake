@@ -80,24 +80,24 @@ Overall, it was a balance between project planning, system design, and learning 
 ## 1.1 System Infrastructure
 
 ### Option A: Fully Cloud-Native Services
-<img src="https://github.com/user-attachments/assets/decd4446-b486-46d1-ac2e-63ca2ee58673" style="width: 100%; height: auto; display: block;">
+<img src="https://github.com/user-attachments/assets/decd4446-b486-46d1-ac2e-63ca2ee58673" style="width: 400; height: auto; display: block;">
 
 ### Option B: EC2 or VPS with Minor Cloud Services
-<img src="https://github.com/user-attachments/assets/477d4ebb-27eb-45cc-bd85-cc092106799f" style="width: 100%; height: auto; display: block;">
+<img src="https://github.com/user-attachments/assets/477d4ebb-27eb-45cc-bd85-cc092106799f" style="width: 400; height: auto; display: block;">
 
 ## 1.2 Data Model (Abstracted ERD)
-<img src="https://github.com/user-attachments/assets/ec295dbc-6fda-45de-a895-5db2e815f4b2" style="width: 100%; height: auto; display: block;">
+<img src="https://github.com/user-attachments/assets/ec295dbc-6fda-45de-a895-5db2e815f4b2" style="width: 400; height: auto; display: block;">
 
 ## 1.3 System Logic (Sequence/Flow)
 
 ### Login
-<img src="https://github.com/user-attachments/assets/a182c63d-7b69-494e-be02-47498d1035cf" style="width: 100%; height: auto; display: block;">
+<img src="https://github.com/user-attachments/assets/a182c63d-7b69-494e-be02-47498d1035cf" style="width: 400; height: auto; display: block;">
 
 ### Create Event
-<img src="https://github.com/user-attachments/assets/21abdfb6-faef-4ca3-be02-b357c83e39f8" style="width: 100%; height: auto; display: block;">
+<img src="https://github.com/user-attachments/assets/21abdfb6-faef-4ca3-be02-b357c83e39f8" style="width: 400; height: auto; display: block;">
 
 ### Reply
-<img src="https://github.com/user-attachments/assets/e42ab4d3-6a41-4db8-a5b2-ae1e7c22afd6" style="width: 100%; height: auto; display: block;">
+<img src="https://github.com/user-attachments/assets/e42ab4d3-6a41-4db8-a5b2-ae1e7c22afd6" style="width: 400; height: auto; display: block;">
 
 
 
@@ -141,9 +141,30 @@ Solutions:
 - with manual page refresh or home page visit, clear Pinia data
 - use TypeScript's interface for significantly better DX
 
+```typescript
+            updateLastSelectedAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null) : void {
+
+                this.filtered_events_structure[
+                    this.current_like_dislike_choice_index
+                ][
+                    this.current_event_generic_status_name_index
+                ][
+                    this.current_main_filter_index
+                ][
+                    this.current_timeframe_index
+                ][
+                    this.current_audio_clip_role_name_index
+                ][
+                    this.current_audio_clip_tone_id
+                ][
+                    'last_selected_audio_clip'
+                ] = audio_clip;
+            },
+```
+
 Tradeoffs:
-- still vulnerable to memory or localStorage overload if scrolling forever
-- shelved the concern above due to high threshold (around 1kb per event) and reality of minimal content on live launch
+- theoretically still vulnerable to memory or localStorage overload if scrolling forever
+- shelved the concern due to high threshold (around 1kb per event) and reality of minimal content on live launch
 
 </details>
 
@@ -196,11 +217,57 @@ Challenges:
 
 Solutions:
 - create a Web Worker file that the browser's Worker() can use to continue the countdown in its own background thread
-- another problem pops up, where Worker() has strict CORS policy, meaning directly loading a Web Worker file from CloudFront is denied
-- after troubleshooting, it is due to CloudFront requiring specific request headers to be present
+- upload bundled Web Worker file to S3 for stage and prod
+
+Secondary Challenges:
+- stage and prod Web Worker URL issue pops up
+- CloudFront expects certain headers in requests to send data
 - you cannot force headers into Worker()'s requests
-- to solve this, use a frontend patcher that uses "code literal" technique, which also loads the CloudFront file into a Blob object
+- CloudFront returns access denied
+
+Secondary Solutions:
+- use a frontend patcher to redefine Worker(), which will now use "code literal" technique, which also loads the CloudFront file into a Blob object
 - this has an added benefit of maintaining frontend/backend separation, by not requiring special CORS treatment at the backend
+
+```typescript
+typeof window !== "undefined" &&
+    (Worker = ((BaseWorker: typeof Worker) =>
+        class Worker extends BaseWorker {
+            constructor(scriptURL: string | URL, options?: WorkerOptions) {
+                const url = String(scriptURL);
+                super(
+                    // Check if the URL is remote
+                    url.includes("://") && !url.startsWith(location.origin)
+                    ? // Launch the worker with an inline script that will use `importScripts`
+                    // to bootstrap the actual script to work around the same origin policy.
+                    URL.createObjectURL(
+                        new Blob(
+                            [
+                                // Replace the `importScripts` function with
+                                // a patched version that will resolve relative URLs
+                                // to the remote script URL.
+                                //
+                                // Without a patched `importScripts` Webpack 5 generated worker chunks will fail with the following error:
+                                //
+                                // Uncaught (in promise) DOMException: Failed to execute 'importScripts' on 'WorkerGlobalScope':
+                                // The script at 'http://some.domain/worker.1e0e1e0e.js' failed to load.
+                                //
+                                // For minification, the inlined variable names are single letters:
+                                // i = original importScripts
+                                // a = arguments
+                                // u = URL
+                                `importScripts=((i)=>(...a)=>i(...a.map((u)=>''+new URL(u,"${url}"))))(importScripts);importScripts("${url}")`,
+                            ],
+                            { type: "text/javascript" }
+                        )
+                    )
+                    : scriptURL,
+                    options
+                );
+            }
+        })(Worker)
+    );
+```
 
 Tradeoffs:
 - higher time cost and complexity, due to how challenging it was to figure out and implement a solution
@@ -441,10 +508,10 @@ Tradeoffs:
 
 ## 4.2 Backend
 ### Database Separation for Different Tests
-#### Issue
+#### Challenges
 - Django's default testing behaviour is to auto-create test db, then destroy it after the tests
 - you can persist the test db, but it's only seamless enough for test-and-check steps
-#### Solution
+#### Solutions
 - create a custom TestRunner (TestRunnerWithMirror) with extra db specification at settings
 - run db data mocking against live dev db, which will persist while not interfering with test db
 - freely choose when to use the TestRunner at cmd via "--testrunner=..." for separation of integration and performance tests
@@ -453,7 +520,7 @@ class TestRunnerWithMirror(DiscoverRunner):
 
     def setup_databases(self, **kwargs):
 
-        # Override DATABASES before test DB setup
+        #override DATABASES before test DB setup
         settings.DATABASES['default']['TEST'].update({'MIRROR': 'default'})
         return super().setup_databases(**kwargs)
 ```
@@ -498,9 +565,9 @@ class TestRunnerWithMirror(DiscoverRunner):
         --testrunner='voicewake.tests.test_metrics.TestRunnerWithMirror';
     python manage.py test voicewake.tests.test_metrics.ListEventReplyChoices_TestCase.test_list_event_reply_choices\
         --testrunner='voicewake.tests.test_metrics.TestRunnerWithMirror';
-- when threshold is hit, allow for 2 retries and +50ms buffer to account for PSQL's own automated ways of data caching
-- raise ValueError when threshold is hit again, with 0 retries left
 - hardcode the final threshold+buffer value once at voicewake.tests.test_metrics.BrowseEvents_TestCase.maximum_time_elapsed_ms
+- when final threshold is hit, allow for 2 retries and +50ms buffer to account for PSQL's self-managed data caching
+- raise ValueError when threshold is hit again with 0 retries left
 
 
 
