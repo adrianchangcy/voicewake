@@ -357,9 +357,9 @@ Solutions:
 - cronjob will evaluate reported audio clips
 
 Tradeoffs:
-- the cronjob has no room for nuanced judgment
-- the cronjob can be manipulated
-- the cronjob is currently the best compromise for a tiny userbase, but its evaluation rules will fall apart once there are a handful of active users
+- cronjob evaluation has no room for nuanced judgment
+- cronjob evaluation's rigid logic can be easily manipulated
+- cronjob evaluation is currently the best compromise for a tiny userbase, but its evaluation rules will fall apart once there are a handful of active users
 
 </details>
 
@@ -375,13 +375,12 @@ Challenges:
 - highly susceptible to race conditions
 
 Solutions:
-- at frontend, allow users to spam actions, but implement a delay that resets on every action, to ideally only send the "last" action to server
-- at backend (important), group the update of likes/dislikes table and metrics table within the same atomic transaction, and use row-level lock for metrics table
-- at database, ensure heavy-write metrics table is separated from heavy-read audio clips table, so row locks on metrics don't affect other updates on audio clips
+- at frontend, allow users to spam actions for better UX with a delay that resets on every action, to send only the likely "last" action to server
+- at backend (important), group the relevant queries together in an atomic transaction to prevent orphaned data, and use relevant row-level locks
+- at database, ensure heavy-write metrics table is separated from heavy-read audio clips table, so that locks can be better managed
 - at database, avoid the use of triggers, so row insertions for populating test database remain frictionless
 
 Tradeoffs:
-- fairly complex concepts to grasp in practice
 - difficult to write tests for race conditions, so implementing solutions must require adequate understanding in advance
 
 </details>
@@ -399,12 +398,12 @@ Tradeoffs:
   </tr>
   <tr>
     <td>Django</td>
-    <td>batteries-included, well-maintained, excellent documentation, built on top of Python</td>
-    <td>carries over Python's greatest strength (and weakness) of poor DX, autocomplete, and typing, when handling complex data such as dicts</td>
-    <td>Golang</td>
-    <td>prides itself on being easy to code, read, and maintain, superior performance, with static typing available</td>
-    <td>lacking in packages for future complexities</td>
-    <td>already well-versed with Python, much easier access to Python's immense variety of public packages to save on dev time, with no existing userbase to justify Golang's superior performance that can only be seen at scale</td>
+    <td>has user auth readily available, has ORM via querysets for better DX, has template engine to aid in SSR, opinionated structure towards project layout (Model-Template-View), built-in test suite for easy test db management, well-maintained, excellent documentation</td>
+    <td>sync by default, hence less optimal for IO-bound services</td>
+    <td>FastAPI</td>
+    <td>excellent async support and performance for IO-bound tasks, lightweight, less opinionated for less developer friction</td>
+    <td>more time cost required to plug in 3rd party features</td>
+    <td>Django is more battle-tested, more ideal for saving development time, has features readily avaible for when requirements are more vague or more complex, and easier to learn the more complex option first from learning perspective</td>
   </tr>
   <tr>
     <td>Vue</td>
@@ -443,7 +442,7 @@ Tradeoffs:
       <td>GCP</td>
           <td>generally lower costs, superior Kubernetes support and maturity</td>
           <td>smaller market share, less mature</td>
-      <td>since learning opportunities and job prospects were top priority, AWS was the clear winner with its free tier</td>
+      <td>chose AWS for its free tier and better DX, since learning opportunities and job prospects were top priority, with features readily available for any unpredictable complexity</td>
   </tr>
 </table>
 
@@ -638,8 +637,6 @@ This code is not released under an open-source license. Unauthorized copying, mo
 This project is maintained as a personal portfolio piece to showcase my engineering process.
 
 While the source code is public for review, I am not currently accepting Pull Requests or entertaining forks for derivative versions.
-
-Thank you for your understanding.
 
 
 
