@@ -1,4 +1,4 @@
-# <a href="voicewake.com">voicewake.com</a>
+# <a href="https://voicewake.com">voicewake.com</a>
 A queue-based audio social media website where two users can match and complete an event to be shown on the front page.
 
 # Motivation
