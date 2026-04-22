@@ -609,6 +609,7 @@ It is with your largely thankless effort that free learning opportunities throug
 - <a href="https://vuejs.org/">Vue</a>
 - <a href="https://pinia.vuejs.org/">Pinia</a>
 - <a href="https://www.postgresql.org/">PostgreSQL</a>
+- <a href="https://www.ffmpeg.org/">FFMPEG</a>
 - <a href="https://www.docker.com/">Docker</a>
 - <a href="https://nginx.org/">NGINX</a>
 - <a href="https://docs.celeryq.dev/en/v5.4.0/index.html">Celery</a>
